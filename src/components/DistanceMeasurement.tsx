@@ -72,12 +72,31 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
     modifyInteractionRef.current = modify;
     map.addInteraction(modify);
 
-    modify.on('modifyend', (evt) => {
-      const features = evt.features.getArray();
-      if (features.length > 0) {
-        updateMeasurement(features[0] as Feature<LineString>);
+ modify.on('modifyend', (evt) => {
+  try {
+    const features = evt.features.getArray();
+    if (features.length > 0) {
+      const feature = features[0];
+      if (feature instanceof Feature && feature.getGeometry() instanceof LineString) {
+        updateMeasurement(feature as Feature<LineString>);
       }
-    });
+    }
+  } catch (error) {
+    console.error('Error during modify event:', error);
+     setMeasuring(false);
+    setDistance(null);
+    setAzimuth(null);
+    setShowInput(false);
+    setStartLon('');
+    setStartLat('');
+    setEndLon('');
+    setEndLat('');
+    if (vectorLayerRef.current && vectorLayerRef.current.getSource()) {
+      vectorLayerRef.current.getSource()!.clear();
+    }
+    alert('Došlo k chybě při měření. Měření bylo resetováno.');
+  }
+});
 
     // Create coordinate overlay
     const coordinateOverlay = new Overlay({
@@ -88,31 +107,69 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
     coordinateOverlayRef.current = coordinateOverlay;
     map.addOverlay(coordinateOverlay);
 
-    // Update coordinate display on mouse move
-    map.on('pointermove', (evt) => {
-      if (showCoordinates) {
+       // Funkce pro aktualizaci zobrazení souřadnic
+    const updateCoordinateDisplay = (evt: any) => {
+      if (showCoordinates && coordinateOverlayRef.current) {
         const coordinate = transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
-        coordinateOverlay.setPosition(evt.coordinate);
-        coordinateOverlay.getElement()!.innerHTML = `${coordinate[0].toFixed(6)}, ${coordinate[1].toFixed(6)}`;
-      } else {
-        coordinateOverlay.setPosition(undefined);
+        coordinateOverlayRef.current.setPosition(evt.coordinate);
+        coordinateOverlayRef.current.getElement()!.innerHTML = `${coordinate[0].toFixed(6)}, ${coordinate[1].toFixed(6)}`;
+      } else if (coordinateOverlayRef.current) {
+        coordinateOverlayRef.current.setPosition(undefined);
       }
-    });
+    };
+
+    // Přidání/odebrání posluchače událostí pro zobrazení souřadnic
+    const toggleCoordinateDisplay = () => {
+      if (showCoordinates) {
+        map.on('pointermove', updateCoordinateDisplay);
+      } else {
+        map.un('pointermove', updateCoordinateDisplay);
+        if (coordinateOverlayRef.current) {
+          coordinateOverlayRef.current.setPosition(undefined);
+        }
+      }
+    };
+
+    toggleCoordinateDisplay();
 
     return () => {
       if (map) {
         map.removeLayer(vectorLayer);
         map.removeInteraction(modify);
+        map.un('pointermove', updateCoordinateDisplay);
         map.removeOverlay(coordinateOverlay);
       }
     };
+  }, [map]);
+
+  useEffect(() => {
+    if (map) {
+      const updateCoordinateDisplay = (evt: any) => {
+        if (showCoordinates && coordinateOverlayRef.current) {
+          const coordinate = transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
+          coordinateOverlayRef.current.setPosition(evt.coordinate);
+          coordinateOverlayRef.current.getElement()!.innerHTML = `${coordinate[0].toFixed(6)}, ${coordinate[1].toFixed(6)}`;
+        } else if (coordinateOverlayRef.current) {
+          coordinateOverlayRef.current.setPosition(undefined);
+        }
+      };
+
+      if (showCoordinates) {
+        map.on('pointermove', updateCoordinateDisplay);
+      } else {
+        map.un('pointermove', updateCoordinateDisplay);
+        if (coordinateOverlayRef.current) {
+          coordinateOverlayRef.current.setPosition(undefined);
+        }
+      }
+    }
   }, [map, showCoordinates]);
 
   const updateMeasurement = (feature: Feature<LineString>) => {
     if (!feature) return;
 
-    const line = feature.getGeometry() as LineString;
-    if (!line) return;
+    const line = feature.getGeometry();
+  if (!(line instanceof LineString)) return;
 
     const length = getLength(line);
     setDistance(length / 1000); // Convert to kilometers
@@ -184,12 +241,14 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
     const start = [parseFloat(startLon), parseFloat(startLat)];
     const end = [parseFloat(endLon), parseFloat(endLat)];
 
-    if (isNaN(start[0]) || isNaN(start[1]) || isNaN(end[0]) || isNaN(end[1])) {
-      alert('Prosím zadejte platné souřadnice.');
-      return;
-    }
+    if (start.some(isNaN) || end.some(isNaN)) {
+    alert('Prosím zadejte platné souřadnice.');
+    return;
+  }
 
     const source = vectorLayerRef.current.getSource()!;
+    if (!source) return;
+
     source.clear();
 
     const startPoint = transform(start, 'EPSG:4326', 'EPSG:3857');
@@ -202,6 +261,67 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
     source.addFeatures([lineFeature, startFeature, endFeature]);
     updateMeasurement(lineFeature);
   };
+
+  useEffect(() => {
+  const handleError = () => {
+    if (map) {
+      // Vyčistit mapu
+      map.getInteractions().clear();
+      map.getOverlays().clear();
+      if (vectorLayerRef.current) {
+        map.removeLayer(vectorLayerRef.current);
+      }
+
+      // Znovu inicializovat potřebné interakce a overlays
+      const vectorSource = new VectorSource();
+      const vectorLayer = new VectorLayer({
+        source: vectorSource,
+        style: createStyleFunction(),
+      });
+      vectorLayerRef.current = vectorLayer;
+      map.addLayer(vectorLayer);
+
+      const modify = new Modify({ source: vectorSource });
+      modifyInteractionRef.current = modify;
+      map.addInteraction(modify);
+
+      modify.on('modifyend', (evt) => {
+        const features = evt.features.getArray();
+        if (features.length > 0) {
+          updateMeasurement(features[0] as Feature<LineString>);
+        }
+      });
+
+      // Znovu vytvořit overlay pro souřadnice
+      const coordinateOverlay = new Overlay({
+        element: document.createElement('div'),
+        positioning: 'bottom-center',
+        stopEvent: false,
+      });
+      coordinateOverlayRef.current = coordinateOverlay;
+      map.addOverlay(coordinateOverlay);
+
+      // Resetovat stav
+      setMeasuring(false);
+      setDistance(null);
+      setAzimuth(null);
+      setShowInput(false);
+      setStartLon('');
+      setStartLat('');
+      setEndLon('');
+      setEndLat('');
+
+      // Informovat uživatele
+      alert('Aplikace byla obnovena kvůli neočekávané chybě. Můžete pokračovat v práci.');
+    }
+  };
+
+  window.addEventListener('error', handleError);
+
+  return () => {
+    window.removeEventListener('error', handleError);
+  };
+}, [map]);
 
   return (
     <Box sx={{ mt: 2 }}>
