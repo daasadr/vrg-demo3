@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Typography, Box } from '@mui/material';
+import { Button, Typography, Box, TextField, Switch, FormControlLabel } from '@mui/material';
 import Map from 'ol/Map';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-import Draw  from 'ol/interaction/Draw';
+import Draw from 'ol/interaction/Draw';
 import Modify from 'ol/interaction/Modify';
 import { LineString, Point } from 'ol/geom';
 import { getLength } from 'ol/sphere';
 import { Feature, Collection } from 'ol';
 import { Style, Stroke, Circle as CircleStyle, Fill } from 'ol/style';
 import { transform } from 'ol/proj';
-import { StyleLike, StyleFunction } from 'ol/style/Style';
 import { FeatureLike } from 'ol/Feature';
 import { DrawEvent } from 'ol/interaction/Draw';
-
+import Overlay from 'ol/Overlay';
 
 interface DistanceMeasurementProps {
   map: Map | null;
@@ -23,11 +22,18 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
   const [measuring, setMeasuring] = useState<boolean>(false);
   const [distance, setDistance] = useState<number | null>(null);
   const [azimuth, setAzimuth] = useState<number | null>(null);
+  const [showInput, setShowInput] = useState<boolean>(false);
+  const [startLon, setStartLon] = useState<string>('');
+  const [startLat, setStartLat] = useState<string>('');
+  const [endLon, setEndLon] = useState<string>('');
+  const [endLat, setEndLat] = useState<string>('');
+  const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const drawInteractionRef = useRef<Draw | null>(null);
   const modifyInteractionRef = useRef<Modify | null>(null);
+  const coordinateOverlayRef = useRef<Overlay | null>(null);
 
-  const createStyleFunction = (): StyleFunction => {
+  const createStyleFunction = () => {
     return (feature: FeatureLike) => {
       const geometry = feature.getGeometry();
       if (geometry instanceof LineString) {
@@ -56,7 +62,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
     const vectorSource = new VectorSource();
     const vectorLayer = new VectorLayer({
       source: vectorSource,
-      style: createStyleFunction()
+      style: createStyleFunction(),
     });
 
     vectorLayerRef.current = vectorLayer;
@@ -66,27 +72,56 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
     modifyInteractionRef.current = modify;
     map.addInteraction(modify);
 
-    modify.on('modifyend', updateMeasurement);
+    modify.on('modifyend', (evt) => {
+      const features = evt.features.getArray();
+      if (features.length > 0) {
+        updateMeasurement(features[0] as Feature<LineString>);
+      }
+    });
+
+    // Create coordinate overlay
+    const coordinateOverlay = new Overlay({
+      element: document.createElement('div'),
+      positioning: 'bottom-center',
+      stopEvent: false,
+    });
+    coordinateOverlayRef.current = coordinateOverlay;
+    map.addOverlay(coordinateOverlay);
+
+    // Update coordinate display on mouse move
+    map.on('pointermove', (evt) => {
+      if (showCoordinates) {
+        const coordinate = transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
+        coordinateOverlay.setPosition(evt.coordinate);
+        coordinateOverlay.getElement()!.innerHTML = `${coordinate[0].toFixed(6)}, ${coordinate[1].toFixed(6)}`;
+      } else {
+        coordinateOverlay.setPosition(undefined);
+      }
+    });
 
     return () => {
       if (map) {
         map.removeLayer(vectorLayer);
         map.removeInteraction(modify);
+        map.removeOverlay(coordinateOverlay);
       }
     };
-  }, [map]);
+  }, [map, showCoordinates]);
 
-  const updateMeasurement = (event: { features: Collection<Feature> }) => {
-    const features = event.features.getArray();
-    if (features.length === 0) return;
+  const updateMeasurement = (feature: Feature<LineString>) => {
+    if (!feature) return;
 
-    const line = features[0].getGeometry() as LineString;
-    const length = getLength(line, { projection: 'EPSG:3857' });
-    setDistance(length);
+    const line = feature.getGeometry() as LineString;
+    if (!line) return;
+
+    const length = getLength(line);
+    setDistance(length / 1000); // Convert to kilometers
 
     const coordinates = line.getCoordinates();
+    if (coordinates.length < 2) return;
+
     const start = transform(coordinates[0], 'EPSG:3857', 'EPSG:4326');
-    const end = transform(coordinates[1], 'EPSG:3857', 'EPSG:4326');
+    const end = transform(coordinates[coordinates.length - 1], 'EPSG:3857', 'EPSG:4326');
     const dx = end[0] - start[0];
     const dy = end[1] - start[1];
     let angle = Math.atan2(dy, dx) * 180 / Math.PI;
@@ -94,7 +129,14 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
       angle += 360;
     }
     setAzimuth(angle);
+
+    // Update input fields
+    setStartLon(start[0].toFixed(6));
+    setStartLat(start[1].toFixed(6));
+    setEndLon(end[0].toFixed(6));
+    setEndLat(end[1].toFixed(6));
   };
+  
 
   const startMeasurement = () => {
     if (!map || !vectorLayerRef.current) return;
@@ -102,6 +144,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
     setMeasuring(true);
     setDistance(null);
     setAzimuth(null);
+    setShowInput(true);
 
     const source = vectorLayerRef.current.getSource()!;
     source.clear();
@@ -114,7 +157,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
 
     draw.on('drawend', (event: DrawEvent) => {
       const feature = event.feature as Feature<LineString>;
-      updateMeasurement({ features: new Collection([feature]) });
+      updateMeasurement(feature);
       setMeasuring(false);
       map.removeInteraction(draw);
     });
@@ -128,6 +171,36 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
 
     map.removeInteraction(drawInteractionRef.current);
     setMeasuring(false);
+    setShowInput(false);
+    setStartLon('');
+    setStartLat('');
+    setEndLon('');
+    setEndLat('');
+  };
+
+  const handleInputMeasurement = () => {
+    if (!map || !vectorLayerRef.current) return;
+
+    const start = [parseFloat(startLon), parseFloat(startLat)];
+    const end = [parseFloat(endLon), parseFloat(endLat)];
+
+    if (isNaN(start[0]) || isNaN(start[1]) || isNaN(end[0]) || isNaN(end[1])) {
+      alert('Prosím zadejte platné souřadnice.');
+      return;
+    }
+
+    const source = vectorLayerRef.current.getSource()!;
+    source.clear();
+
+    const startPoint = transform(start, 'EPSG:4326', 'EPSG:3857');
+    const endPoint = transform(end, 'EPSG:4326', 'EPSG:3857');
+
+    const lineFeature = new Feature(new LineString([startPoint, endPoint]));
+    const startFeature = new Feature(new Point(startPoint));
+    const endFeature = new Feature(new Point(endPoint));
+
+    source.addFeatures([lineFeature, startFeature, endFeature]);
+    updateMeasurement(lineFeature);
   };
 
   return (
@@ -148,15 +221,64 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ map }) => {
           Zrušit měření
         </Button>
       )}
+      <FormControlLabel
+        control={
+          <Switch
+            checked={showCoordinates}
+            onChange={(e) => setShowCoordinates(e.target.checked)}
+            name="showCoordinates"
+          />
+        }
+        label="Zobrazit souřadnice"
+      />
       {distance !== null && (
         <Typography variant="body1" sx={{ mt: 1 }}>
-          Vzdálenost: {distance.toFixed(2)} m ({(distance / 1000).toFixed(2)} km)
+          Vzdálenost: {distance.toFixed(1)} km
         </Typography>
       )}
       {azimuth !== null && (
         <Typography variant="body1">
           Azimut: {azimuth.toFixed(2)}°
         </Typography>
+      )}
+      {showInput && (
+        <Box sx={{ mt: 2 }}>
+          <TextField
+            label="Start - Zeměpisná délka"
+            value={startLon}
+            onChange={(e) => setStartLon(e.target.value)}
+            size="small"
+            sx={{ mr: 1, mb: 1 }}
+          />
+          <TextField
+            label="Start - Zeměpisná šířka"
+            value={startLat}
+            onChange={(e) => setStartLat(e.target.value)}
+            size="small"
+            sx={{ mr: 1, mb: 1 }}
+          />
+          <TextField
+            label="Konec - Zeměpisná délka"
+            value={endLon}
+            onChange={(e) => setEndLon(e.target.value)}
+            size="small"
+            sx={{ mr: 1, mb: 1 }}
+          />
+          <TextField
+            label="Konec - Zeměpisná šířka"
+            value={endLat}
+            onChange={(e) => setEndLat(e.target.value)}
+            size="small"
+            sx={{ mr: 1, mb: 1 }}
+          />
+          <Button 
+            variant="contained" 
+            onClick={handleInputMeasurement}
+            sx={{ mt: 1 }}
+          >
+            Změřit zadané souřadnice
+          </Button>
+        </Box>
       )}
     </Box>
   );

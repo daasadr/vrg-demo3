@@ -39,16 +39,12 @@ const HelpComponent: React.FC = () => {
       <Typography variant="h6" gutterBottom>
         Měření pomocí kreslení do mapy
       </Typography>
-      <Grid container spacing={2}>
         {helpItems.map((item, index) => (
-          <Grid item xs={6} key={index} >
-            <HelpItem>
+          <HelpItem key={index}>
               <HelpText variant="body1">{item.number}</HelpText>
               <HelpText variant="body2">{item.description}</HelpText>
             </HelpItem>
-          </Grid>
         ))}
-      </Grid>
     </Paper>
     </Box>
   );
