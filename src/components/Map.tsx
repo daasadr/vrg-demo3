@@ -5,7 +5,8 @@ import View from 'ol/View';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
 import { fromLonLat } from 'ol/proj';
-import DistanceMeasurement from './DistanceMeasurement';
+import DistanceMeasurement from '../DistanceMeasurement/DistanceMeasurement';
+import AngleMeasurement from '../AngleMeasuremet/AngleMeasurement';
 
 const MapComponent: React.FC = () => {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -36,6 +37,7 @@ const MapComponent: React.FC = () => {
     <>
       <div ref={mapRef} style={{ width: '100%', height: '500px' }} />
       <DistanceMeasurement map={map} />
+      <AngleMeasurement map={map} />
     </>
   );
 }
