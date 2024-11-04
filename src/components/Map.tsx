@@ -5,12 +5,14 @@ import View from 'ol/View';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
 import { fromLonLat } from 'ol/proj';
-import DistanceMeasurement from '../DistanceMeasurement/DistanceMeasurement';
-import AngleMeasurement from '../AngleMeasuremet/AngleMeasurement';
+import { MeasurementProvider, useMeasurement } from './MeasurementContext';
+import MeasurementContainer from './MeasurementContainer';
+
 
 const MapComponent: React.FC = () => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<Map | null>(null);
+  const {setMap} = useMeasurement();
+  
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -30,16 +32,22 @@ const MapComponent: React.FC = () => {
 
     setMap(initialMap);
 
-    return () => initialMap.setTarget(undefined);
-  }, []);
+    return () => {initialMap.setTarget(undefined);
+    setMap(null);
+  };
+  }, [setMap]);
 
     return (
     <>
       <div ref={mapRef} style={{ width: '100%', height: '500px' }} />
-      <DistanceMeasurement map={map} />
-      <AngleMeasurement map={map} />
+      <MeasurementContainer />
     </>
   );
 }
 
-export default MapComponent;
+const MapWithProvider: React.FC = () => (
+  <MeasurementProvider>
+    <MapComponent/>
+  </MeasurementProvider>
+)
+export default MapWithProvider;
