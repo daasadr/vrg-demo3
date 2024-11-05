@@ -226,16 +226,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ isActive, onA
           Zrušit měření
         </Button>
       )}
-      <FormControlLabel
-        control={
-          <Switch
-            checked={showCoordinates}
-            onChange={(e) => setShowCoordinates(e.target.checked)}
-            name="showCoordinates"
-          />
-        }
-        label="Zobrazit souřadnice"
-      />
+      
       {distance !== null && (
         <Typography variant="body1" sx={{ mt: 1 }}>
           Vzdálenost: {distance.toFixed(3)} km

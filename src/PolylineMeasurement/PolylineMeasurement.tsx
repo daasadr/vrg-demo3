@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Button, TextField, Box, Typography } from '@mui/material';
+import { Button, TextField, Box, Typography, IconButton } from '@mui/material';
 import { Map } from 'ol';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
@@ -11,6 +11,7 @@ import { transform } from 'ol/proj';
 import Feature from 'ol/Feature';
 import { Coordinate } from 'ol/coordinate';
 import { useMeasurement } from '../components/MeasurementContext';
+import CloseIcon from '@mui/icons-material/Close';
 
 interface PolylineMeasurementProps {
   isActive: boolean;
@@ -152,26 +153,41 @@ const PolylineMeasurement: React.FC<PolylineMeasurementProps> = ({ isActive, onA
     newCoordinates[index][type === 'lon' ? 0 : 1] = newValue;
     setCoordinates(newCoordinates);
 
+    updateMapFeatures(newCoordinates);
+  };
+
+  const updateMapFeatures = (coords: Coordinate[]) => {
     // Update map features
-    const mapCoords = newCoordinates.map(coord => 
+    const mapCoords = coords.map(coord => 
       transform(coord, 'EPSG:4326', 'EPSG:3857')
     );
 
     source.clear();
-    const lineFeature = new Feature(new LineString(mapCoords));
-    source.addFeature(lineFeature);
+    
+    if (mapCoords.length > 0) {
+      const lineFeature = new Feature(new LineString(mapCoords));
+      source.addFeature(lineFeature);
 
-    // Add point features
-    mapCoords.forEach((coord) => {
-      const pointFeature = new Feature(new Point(coord));
-      source.addFeature(pointFeature);
-    });
+      // Add point features
+      mapCoords.forEach((coord) => {
+        const pointFeature = new Feature(new Point(coord));
+        source.addFeature(pointFeature);
+      });
 
-    updateMeasurement();
+      updateMeasurement();
+    } else {
+      setTotalDistance(null);
+    }
   };
 
   const addNewPoint = () => {
     setCoordinates([...coordinates, [0, 0]]);
+  };
+
+  const removePoint = (index: number) => {
+    const newCoordinates = coordinates.filter((_, i) => i !== index);
+    setCoordinates(newCoordinates);
+    updateMapFeatures(newCoordinates);
   };
 
   return (
@@ -201,7 +217,7 @@ const PolylineMeasurement: React.FC<PolylineMeasurementProps> = ({ isActive, onA
 
       <Box sx={{ mt: 2 }}>
         {coordinates.map((coord, index) => (
-          <Box key={index} sx={{ mt: 1 }}>
+          <Box key={index} sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
             <TextField
               label={`Bod ${index + 1} - Zeměpisná délka`}
               type="number"
@@ -217,6 +233,14 @@ const PolylineMeasurement: React.FC<PolylineMeasurementProps> = ({ isActive, onA
               onChange={(e) => handleCoordinateChange(index, 'lat', e.target.value)}
               size="small"
             />
+            <IconButton
+              onClick={() => removePoint(index)}
+              size="small"
+              sx={{ ml: 1 }}
+              aria-label={`Odstranit bod ${index + 1}`}
+            >
+              <CloseIcon />
+            </IconButton>
           </Box>
         ))}
         
