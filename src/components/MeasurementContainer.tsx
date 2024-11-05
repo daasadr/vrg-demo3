@@ -2,6 +2,8 @@ import React from 'react';
 import { useMeasurement } from './MeasurementContext';
 import DistanceMeasurement from '../DistanceMeasurement/DistanceMeasurement';
 import AngleMeasurement from '../AngleMeasurement/AngleMeasurement';
+import PolylineMeasurement from '../PolylineMeasurement/PolylineMeasurement';
+
 
 const MeasurementContainer: React.FC = () => {
   const { activeMeasurement, toggleMeasurement } = useMeasurement();
@@ -15,6 +17,10 @@ const MeasurementContainer: React.FC = () => {
       <AngleMeasurement
         isActive={activeMeasurement === 'angle'}
         onActivate={() => toggleMeasurement('angle')}
+      />
+      <PolylineMeasurement
+        isActive={activeMeasurement === 'polyline'}
+        onActivate={() => toggleMeasurement('polyline')}
       />
     </div>
   );

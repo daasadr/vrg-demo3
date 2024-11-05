@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Map } from 'ol';
 
-type MeasurementType = 'distance' | 'angle' | null;
+type MeasurementType = 'distance' | 'angle' | 'polyline' | null;
 
 interface MeasurementContextType {
   activeMeasurement: MeasurementType;
