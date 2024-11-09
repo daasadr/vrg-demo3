@@ -16,47 +16,61 @@ interface AngleMeasurementProps {
   onActivate: () => void;
 }
 
-const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivate }) => {
+const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive }) => {
   const { map } = useMeasurement();
   const sourceRef = useRef<VectorSource>(new VectorSource());
- const vectorLayerRef = useRef<VectorLayer<VectorSource>>(
-  new VectorLayer({
-    source: sourceRef.current,
-    style: function(feature) {  // změněna syntaxe a přidán explicitní return
-      const geometry = feature.getGeometry();
-      if (geometry instanceof LineString) {
-        return new Style({
-          stroke: new Stroke({
-            color: 'red',
-            width: 2,
-          }),
-        });
-      } else if (geometry instanceof Point) {
-        return new Style({
-          image: new Circle({
-            radius: 5,
-            fill: new Fill({
-              color: 'blue',
-            }),
+  const vectorLayerRef = useRef<VectorLayer<VectorSource>>(
+    new VectorLayer({
+      source: sourceRef.current,
+      style: function(feature) {
+        const geometry = feature.getGeometry();
+        if (geometry instanceof LineString) {
+          return new Style({
             stroke: new Stroke({
-              color: 'white',
+              color: 'red',
               width: 2,
             }),
-          }),
-        });
+          });
+        } else if (geometry instanceof Point) {
+          return new Style({
+            image: new Circle({
+              radius: 5,
+              fill: new Fill({
+                color: 'blue',
+              }),
+              stroke: new Stroke({
+                color: 'white',
+                width: 2,
+              }),
+            }),
+          });
+        }
+        return new Style({});
       }
-      return new Style({}); 
-    }
-  })
+    })
   );
   
   const [angle, setAngle] = useState<number>(0);
   const [unit, setUnit] = useState<'degrees' | 'radians'>('degrees');
-  const [coordinates, setCoordinates] = useState<Coordinate[]>([]);
-  const [isMeasuring, setIsMeasuring] = useState<boolean>(false);
-  const [modifyInteraction, setModifyInteraction] = useState<Modify | null>(null);
+  const [coordinates, setCoordinates] = useState<Array<[string, string]>>([
+    ['', ''],
+    ['', ''],
+    ['', '']
+  ]);
 
-  // Přidání/odebrání vrstvy při mount/unmount
+  // Konstanty pro vstupy
+  const inputProps = {
+    step: 0.01,
+    min: -180,
+    max: 180,
+  };
+
+  const latitudeInputProps = {
+    ...inputProps,
+    min: -90,
+    max: 90,
+  };
+
   useEffect(() => {
     if (!map) return;
     map.addLayer(vectorLayerRef.current);
@@ -68,13 +82,11 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
   const updateFeaturesFromCoordinates = useCallback((mapCoords: Coordinate[]) => {
     sourceRef.current.clear();
     
-    // Přidání line string feature pro čáry mezi body
     if (mapCoords.length >= 2) {
       const lineStringFeature = new Feature(new LineString(mapCoords));
       sourceRef.current.addFeature(lineStringFeature);
     }
     
-    // Přidání bodových features
     mapCoords.forEach((coord, index) => {
       const pointFeature = new Feature(new Point(coord));
       pointFeature.set('pointIndex', index);
@@ -97,52 +109,34 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
     setAngle(angle);
   }, []);
 
-  // Vytvoření a správa Draw interakce
-  const createDrawInteraction = useCallback(() => {
-    if (!map) return null;
+  useEffect(() => {
+    if (!map || !isActive) return;
 
-    const drawInteraction = new Draw({
+    const draw = new Draw({
       source: sourceRef.current,
       type: 'LineString',
       maxPoints: 3
     });
 
-    drawInteraction.on('drawend', (event: any) => {
+    draw.on('drawend', (event: any) => {
       const feature = event.feature;
       const geometry = feature.getGeometry() as LineString;
       const coords = geometry.getCoordinates();
       
       const wgs84Coords = coords.map(coord => toLonLat(coord));
-      setCoordinates(wgs84Coords);
+      setCoordinates(wgs84Coords.map(coord => [coord[0].toFixed(2), coord[1].toFixed(2)]));
       
       updateFeaturesFromCoordinates(coords);
       calculateAngle(coords);
       
-      setIsMeasuring(false);
-      map.removeInteraction(drawInteraction);
+      map.removeInteraction(draw);
+      map.addInteraction(draw);
     });
 
-    return drawInteraction;
-  }, [map, updateFeaturesFromCoordinates, calculateAngle]);
-
-  // Vytvoření a správa Modify interakce
-  const createModifyInteraction = useCallback(() => {
-    if (!map) return null;
+    map.addInteraction(draw);
 
     const modify = new Modify({
-      source: sourceRef.current,
-      style: new Style({
-        image: new Circle({
-          radius: 6,
-          fill: new Fill({
-            color: 'yellow'
-          }),
-          stroke: new Stroke({
-            color: 'red',
-            width: 2
-          })
-        })
-      })
+      source: sourceRef.current
     });
 
     modify.on('modifyend', () => {
@@ -152,50 +146,21 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
         .map(f => (f.getGeometry() as Point).getCoordinates());
 
       if (points.length === 3) {
-        const lineStringFeature = sourceRef.current.getFeatures()
-          .find(f => f.getGeometry() instanceof LineString);
-        if (lineStringFeature) {
-          (lineStringFeature.getGeometry() as LineString).setCoordinates(points);
-        }
-
         const wgs84Coords = points.map(coord => toLonLat(coord));
-        setCoordinates(wgs84Coords);
+        setCoordinates(wgs84Coords.map(coord => [coord[0].toFixed(2), coord[1].toFixed(2)]));
         calculateAngle(points);
       }
     });
 
-    return modify;
-  }, [map, calculateAngle]);
-
-  useEffect(() => {
-    if (!map) return;
-
-    let drawInteraction: Draw | null = null;
-    let modifyInteraction: Modify | null = null;
-
-    if (isActive) {
-      if (isMeasuring) {
-        drawInteraction = createDrawInteraction();
-        if (drawInteraction) map.addInteraction(drawInteraction);
-      }
-      
-      modifyInteraction = createModifyInteraction();
-      if (modifyInteraction) {
-        map.addInteraction(modifyInteraction);
-        setModifyInteraction(modifyInteraction);
-      }
-    }
+    map.addInteraction(modify);
 
     return () => {
-      if (drawInteraction) map.removeInteraction(drawInteraction);
-      if (modifyInteraction) {
-        map.removeInteraction(modifyInteraction);
-        setModifyInteraction(null);
-      }
+      map.removeInteraction(draw);
+      map.removeInteraction(modify);
     };
-  }, [map, isActive, isMeasuring, createDrawInteraction, createModifyInteraction]);
+  }, [map, isActive, updateFeaturesFromCoordinates, calculateAngle]);
 
-  const handleUnitChange = (event: SelectChangeEvent) => {
+  const handleUnitChange = (event: SelectChangeEvent<string>) => {
     setUnit(event.target.value as 'degrees' | 'radians');
   };
 
@@ -206,92 +171,89 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
     return angle.toFixed(2) + '°';
   };
 
-  const startNewMeasurement = useCallback(() => {
-    if (!isActive) {
-      onActivate();
-    }
-    setIsMeasuring(true);
-    setAngle(0);
-    setCoordinates([]);
-    sourceRef.current.clear();
-  }, [isActive, onActivate]);
-
-  const stopMeasurement = useCallback(() => {
-    setIsMeasuring(false);
-    setAngle(0);
-    setCoordinates([]);
-    sourceRef.current.clear();
-  }, []);
-
-  const handleCoordinateChange = (index: number, coord: 'lon' | 'lat', value: string) => {
+  const handleCoordinateChange = (index: number, type: 'lon' | 'lat', value: string) => {
     const newCoordinates = [...coordinates];
-    const newValue = parseFloat(value);
-    if (isNaN(newValue)) return;
-    
-    newCoordinates[index] = [...(newCoordinates[index] || [0, 0])];
-    newCoordinates[index][coord === 'lon' ? 0 : 1] = newValue;
+    newCoordinates[index] = [...newCoordinates[index]];
+    newCoordinates[index][type === 'lon' ? 0 : 1] = value;
     setCoordinates(newCoordinates);
-    
-    const mapCoords = newCoordinates.map(coord => fromLonLat(coord));
-    updateFeaturesFromCoordinates(mapCoords);
-    calculateAngle(mapCoords);
+  };
+
+  const measureFromCoordinates = () => {
+    const parsedCoords = coordinates.map(coord => [
+      parseFloat(coord[0]) || 0,
+      parseFloat(coord[1]) || 0
+    ]);
+
+    if (parsedCoords.length === 3) {
+      const mapCoords = parsedCoords.map(coord => fromLonLat(coord));
+      updateFeaturesFromCoordinates(mapCoords);
+      calculateAngle(mapCoords);
+    }
   };
 
   return (
-    <Box sx={{ mt: 2 }}>
-      <Button 
-        variant="contained" 
-        onClick={startNewMeasurement}
-        disabled={isMeasuring}
-      >
-        {isMeasuring ? 'Probíhá měření...' : 'Zahájit měření úhlu'}
-      </Button>
-      {isMeasuring && (
-        <Button
-          variant="outlined"
-          onClick={stopMeasurement}
-          sx={{ ml: 2 }}
-        >
-          Zrušit měření
-        </Button>
-      )}
-      <FormControl sx={{ m: 1, minWidth: 120 }}>
-        <InputLabel id="unit-select-label">Jednotky</InputLabel>
-        <Select
-          labelId="unit-select-label"
-          id="unit-select"
-          value={unit}
-          label="Jednotky"
-          onChange={handleUnitChange}
-        >
-          <MenuItem value="degrees">Stupně</MenuItem>
-          <MenuItem value="radians">Radiány</MenuItem>
-        </Select>
-      </FormControl>
+    <Box sx={{ p: 2 }}>
+      <Box sx={{ mb: 2 }}>
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel id="unit-select-label">Jednotky</InputLabel>
+          <Select
+            labelId="unit-select-label"
+            id="unit-select"
+            value={unit}
+            label="Jednotky"
+            onChange={handleUnitChange}
+            size="small"
+          >
+            <MenuItem value="degrees">Stupně</MenuItem>
+            <MenuItem value="radians">Radiány</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
       {angle !== 0 && (
-        <Typography variant="body1" sx={{ mt: 1 }}>
+        <Typography variant="body1" sx={{ mb: 2 }}>
           Změřený úhel: {formatAngle()}
         </Typography>
       )}
-      {coordinates.map((coord, index) => (
-        <Box key={index} sx={{ mt: 1 }}>
-          <TextField
-            label={`Bod ${index + 1} - Zeměpisná délka`}
-            type="number"
-            value={coord[0].toFixed(6)}
-            onChange={(e) => handleCoordinateChange(index, 'lon', e.target.value)}
-            size="small"
-            sx={{ mr: 1 }}
-          />
-          <TextField
-            label={`Bod ${index + 1} - Zeměpisná šířka`}
-            type="number"
-            value={coord[1].toFixed(6)}
-            onChange={(e) => handleCoordinateChange(index, 'lat', e.target.value)}
-            size="small"
-          />
-        </Box>
-      ))}
+
+      <Typography variant="subtitle1" sx={{ mb: 2 }}>
+        Souřadnice bodů (WGS84):
+      </Typography>
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {[0, 1, 2].map((index) => (
+          <Box key={index} sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <TextField
+              label={`Bod ${index + 1} - Zeměpisná délka`}
+              type="number"
+              value={coordinates[index][0]}
+              onChange={(e) => handleCoordinateChange(index, 'lon', e.target.value)}
+              inputProps={inputProps}
+              variant="outlined"
+              size="small"
+              sx={{ width: '180px' }}
+            />
+            <TextField
+              label={`Bod ${index + 1} - Zeměpisná šířka`}
+              type="number"
+              value={coordinates[index][1]}
+              onChange={(e) => handleCoordinateChange(index, 'lat', e.target.value)}
+              inputProps={latitudeInputProps}
+              variant="outlined"
+              size="small"
+              sx={{ width: '180px' }}
+            />
+          </Box>
+        ))}
+      </Box>
+
+      <Button 
+        variant="contained"
+        onClick={measureFromCoordinates}
+        sx={{ mt: 3 }}
+      >
+        Změřit zadané souřadnice
+      </Button>
     </Box>
   );
 };

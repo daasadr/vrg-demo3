@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Button, Typography, Box, TextField, Switch, FormControlLabel } from '@mui/material';
+import { Button, Typography, Box, TextField, Select, MenuItem } from '@mui/material';
 import Map from 'ol/Map';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
@@ -18,6 +18,8 @@ interface DistanceMeasurementProps {
   onActivate: () => void;
 }
 
+type DistanceUnit = 'km' | 'mi';
+
 const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ isActive, onActivate }) => {
   const { map, activeMeasurement, toggleMeasurement } = useMeasurement();
   const [measuring, setMeasuring] = useState<boolean>(false);
@@ -28,10 +30,15 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ isActive, onA
   const [endLon, setEndLon] = useState<string>('');
   const [endLat, setEndLat] = useState<string>('');
   const [showCoordinates, setShowCoordinates] = useState<boolean>(true);
+  const [unit, setUnit] = useState<DistanceUnit>('km');
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const drawInteractionRef = useRef<Draw | null>(null);
   const modifyInteractionRef = useRef<Modify | null>(null);
   const coordinateOverlayRef = useRef<Overlay | null>(null);
+
+  const convertDistance = (distanceInKm: number, targetUnit: DistanceUnit): number => {
+    return targetUnit === 'km' ? distanceInKm : distanceInKm * 0.621371;
+  };
 
   useEffect(() => {
     if (!map) return;
@@ -76,8 +83,6 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ isActive, onA
     };
   }, [map]);
 
-
-
   const createStyleFunction = () => {
     return (feature: any) => {
       const geometry = feature.getGeometry();
@@ -108,7 +113,7 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ isActive, onA
     if (!(line instanceof LineString)) return;
 
     const length = getLength(line);
-    setDistance(length / 1000); // Convert to kilometers
+    setDistance(length / 1000); // Store in kilometers
 
     const coordinates = line.getCoordinates();
     if (coordinates.length < 2) return;
@@ -116,16 +121,14 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ isActive, onA
     const start = transform(coordinates[0], 'EPSG:3857', 'EPSG:4326');
     const end = transform(coordinates[coordinates.length - 1], 'EPSG:3857', 'EPSG:4326');
 
-    setStartLon(start[0].toFixed(6));
-    setStartLat(start[1].toFixed(6));
-    setEndLon(end[0].toFixed(6));
-    setEndLat(end[1].toFixed(6));
+    setStartLon(start[0].toFixed(2));
+    setStartLat(start[1].toFixed(2));
+    setEndLon(end[0].toFixed(2));
+    setEndLat(end[1].toFixed(2));
   }, []);
 
   const startMeasurement = useCallback(() => {
-    if (!map || activeMeasurement !=='distance') {
-      return;
-    }
+    if (!map || activeMeasurement !== 'distance') return;
 
     setMeasuring(true);
     setDistance(null);
@@ -150,38 +153,14 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ isActive, onA
 
       map.addInteraction(draw);
       drawInteractionRef.current = draw;
-    } else {
-      console.error('Vector source is not available');
-      setMeasuring(false);
     }
-  }, [map, activeMeasurement]);
+  }, [map, activeMeasurement, updateMeasurement]);
 
   useEffect(() => {
     if (activeMeasurement === 'distance') {
       startMeasurement();
-    } else {
-      stopMeasurement();
     }
   }, [activeMeasurement, startMeasurement]);
-
-
-  const stopMeasurement = useCallback(() => {
-    console.log('Stopping distance measurement');
-    if (!map || !drawInteractionRef.current) return;
-
-    map.removeInteraction(drawInteractionRef.current);
-    setMeasuring(false);
-    setShowInput(false);
-    setStartLon('');
-    setStartLat('');
-    setEndLon('');
-    setEndLat('');
-    if (vectorLayerRef.current && vectorLayerRef.current.getSource()) {
-      vectorLayerRef.current.getSource()!.clear();
-    }
-    setDistance(null);
-  }, [map]);
-
 
   const handleInputMeasurement = () => {
     if (!map || !vectorLayerRef.current) return;
@@ -208,69 +187,82 @@ const DistanceMeasurement: React.FC<DistanceMeasurementProps> = ({ isActive, onA
     updateMeasurement(lineFeature);
   };
 
+  // Pomocné konstanty pro inputy
+  const inputProps = {
+    step: 0.01,  // Krok po setinách stupně
+    min: -180,   // Minimální hodnota pro délku
+    max: 180,    // Maximální hodnota pro délku
+  };
+
+  const latitudeInputProps = {
+    ...inputProps,
+    min: -90,    // Minimální hodnota pro šířku
+    max: 90,     // Maximální hodnota pro šířku
+  };
+
   return (
     <Box sx={{ mt: 2 }}>
-      <Button
-        variant="contained"
-        onClick={() => toggleMeasurement('distance')}
-        disabled={measuring}
-      >
-        {measuring ? 'Probíhá měření...' : 'Zahájit měření vzdálenosti'}
-      </Button>
-      {measuring && (
-        <Button
-          variant="outlined"
-          onClick={stopMeasurement}
-          sx={{ ml: 2 }}
-        >
-          Zrušit měření
-        </Button>
-      )}
-      
       {distance !== null && (
-        <Typography variant="body1" sx={{ mt: 1 }}>
-          Vzdálenost: {distance.toFixed(3)} km
-        </Typography>
-      )}
-      {showInput && (
-        <Box sx={{ mt: 2 }}>
-          <TextField
-            label="Start - Zeměpisná délka"
-            value={startLon}
-            onChange={(e) => setStartLon(e.target.value)}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+          <Typography variant="body1">
+            Vzdálenost: {convertDistance(distance, unit).toFixed(3)} {unit === 'km' ? 'km' : 'mi'}
+          </Typography>
+          <Select
+            value={unit}
+            onChange={(e) => setUnit(e.target.value as DistanceUnit)}
             size="small"
-            sx={{ mr: 1, mb: 1 }}
-          />
-          <TextField
-            label="Start - Zeměpisná šířka"
-            value={startLat}
-            onChange={(e) => setStartLat(e.target.value)}
-            size="small"
-            sx={{ mr: 1, mb: 1 }}
-          />
-          <TextField
-            label="Konec - Zeměpisná délka"
-            value={endLon}
-            onChange={(e) => setEndLon(e.target.value)}
-            size="small"
-            sx={{ mr: 1, mb: 1 }}
-          />
-          <TextField
-            label="Konec - Zeměpisná šířka"
-            value={endLat}
-            onChange={(e) => setEndLat(e.target.value)}
-            size="small"
-            sx={{ mr: 1, mb: 1 }}
-          />
-          <Button 
-            variant="contained" 
-            onClick={handleInputMeasurement}
-            sx={{ mt: 1 }}
+            sx={{ ml: 2, minWidth: 100 }}
           >
-            Změřit zadané souřadnice
-          </Button>
+            <MenuItem value="km">Kilometry</MenuItem>
+            <MenuItem value="mi">Míle</MenuItem>
+          </Select>
         </Box>
       )}
+      <Box sx={{ mt: 2 }}>
+        <TextField
+          label="Start - Zeměpisná délka"
+          value={startLon}
+          onChange={(e) => setStartLon(e.target.value)}
+          type="number"
+          inputProps={inputProps}
+          size="small"
+          sx={{ mr: 1, mb: 1 }}
+        />
+        <TextField
+          label="Start - Zeměpisná šířka"
+          value={startLat}
+          onChange={(e) => setStartLat(e.target.value)}
+          type="number"
+          inputProps={latitudeInputProps}
+          size="small"
+          sx={{ mr: 1, mb: 1 }}
+        />
+        <TextField
+          label="Konec - Zeměpisná délka"
+          value={endLon}
+          onChange={(e) => setEndLon(e.target.value)}
+          type="number"
+          inputProps={inputProps}
+          size="small"
+          sx={{ mr: 1, mb: 1 }}
+        />
+        <TextField
+          label="Konec - Zeměpisná šířka"
+          value={endLat}
+          onChange={(e) => setEndLat(e.target.value)}
+          type="number"
+          inputProps={latitudeInputProps}
+          size="small"
+          sx={{ mr: 1, mb: 1 }}
+        />
+        <Button 
+          variant="contained" 
+          onClick={handleInputMeasurement}
+          sx={{ mt: 1 }}
+        >
+          Změřit zadané souřadnice
+        </Button>
+      </Box>
     </Box>
   );
 };
