@@ -1,0 +1,107 @@
+.measurement-container {
+    margin-top: 20px;
+    padding: 0 20px;
+}
+
+.measurement-box {
+    border: 1px solid #1e40af;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: white;
+    position: relative;
+}
+
+.selection-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.selection-content h2 {
+    color: #1e40af;
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.button-group {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.button-group button,
+.end-button {
+    padding: 10px 20px;
+    background-color: #1e40af;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.button-group button:hover,
+.end-button:hover {
+    background-color: #1e3a8a;
+}
+
+.active-measurement {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.end-button {
+    margin-top: 10px;
+}
+
+.help-icon {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 24px;
+    height: 24px;
+    background-color: #1e40af;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.help-tooltip {
+    position: absolute;
+    top: 50px;
+    right: 20px;
+    background-color: white;
+    border: 1px solid #1e40af;
+    border-radius: 6px;
+    padding: 15px;
+    width: 300px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: none;
+    z-index: 1000;
+}
+
+.help-icon:hover+.help-tooltip {
+    display: block;
+}
+
+.help-tooltip ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.help-tooltip li {
+    margin-bottom: 8px;
+}

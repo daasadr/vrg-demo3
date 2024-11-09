@@ -4,7 +4,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Container from '@mui/material/Container';
 import Header from './components/Header';
 import Map from './components/Map';
-import HelpComponent from './components/HelpComponent';
+
 
 const theme = createTheme({
   palette: {
@@ -22,7 +22,6 @@ const App: React.FC = () => {
         <Header />
         <Map />
       </Container>
-      <HelpComponent/>
     </ThemeProvider>
   );
 }
