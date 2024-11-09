@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Map } from 'ol';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
@@ -18,35 +18,36 @@ interface AngleMeasurementProps {
 
 const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivate }) => {
   const { map } = useMeasurement();
-  const [source] = useState<VectorSource>(() => new VectorSource());
-  const [vectorLayer] = useState<VectorLayer<VectorSource>>(() => 
-    new VectorLayer({
-      source: source,
-      style: (feature) => {
-        const geometry = feature.getGeometry();
-        if (geometry instanceof LineString) {
-          return new Style({
+  const sourceRef = useRef<VectorSource>(new VectorSource());
+ const vectorLayerRef = useRef<VectorLayer<VectorSource>>(
+  new VectorLayer({
+    source: sourceRef.current,
+    style: function(feature) {  // změněna syntaxe a přidán explicitní return
+      const geometry = feature.getGeometry();
+      if (geometry instanceof LineString) {
+        return new Style({
+          stroke: new Stroke({
+            color: 'red',
+            width: 2,
+          }),
+        });
+      } else if (geometry instanceof Point) {
+        return new Style({
+          image: new Circle({
+            radius: 5,
+            fill: new Fill({
+              color: 'blue',
+            }),
             stroke: new Stroke({
-              color: 'red',
-              width: 2
-            })
-          });
-        } else if (geometry instanceof Point) {
-          return new Style({
-            image: new Circle({
-              radius: 5,
-              fill: new Fill({
-                color: 'blue'
-              }),
-              stroke: new Stroke({
-                color: 'white',
-                width: 2
-              })
-            })
-          });
-        }
+              color: 'white',
+              width: 2,
+            }),
+          }),
+        });
       }
-    })
+      return new Style({}); 
+    }
+  })
   );
   
   const [angle, setAngle] = useState<number>(0);
@@ -58,28 +59,28 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
   // Přidání/odebrání vrstvy při mount/unmount
   useEffect(() => {
     if (!map) return;
-    map.addLayer(vectorLayer);
+    map.addLayer(vectorLayerRef.current);
     return () => {
-      map.removeLayer(vectorLayer);
+      map.removeLayer(vectorLayerRef.current);
     };
-  }, [map, vectorLayer]);
+  }, [map]);
 
   const updateFeaturesFromCoordinates = useCallback((mapCoords: Coordinate[]) => {
-    source.clear();
+    sourceRef.current.clear();
     
     // Přidání line string feature pro čáry mezi body
     if (mapCoords.length >= 2) {
       const lineStringFeature = new Feature(new LineString(mapCoords));
-      source.addFeature(lineStringFeature);
+      sourceRef.current.addFeature(lineStringFeature);
     }
     
     // Přidání bodových features
     mapCoords.forEach((coord, index) => {
       const pointFeature = new Feature(new Point(coord));
-      pointFeature.set('pointIndex', index); // Přidáme index pro identifikaci bodu
-      source.addFeature(pointFeature);
+      pointFeature.set('pointIndex', index);
+      sourceRef.current.addFeature(pointFeature);
     });
-  }, [source]);
+  }, []);
 
   const calculateAngle = useCallback((coords: Coordinate[]) => {
     if (coords.length !== 3) return;
@@ -98,10 +99,10 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
 
   // Vytvoření a správa Draw interakce
   const createDrawInteraction = useCallback(() => {
-    if (!map || !source) return null;
+    if (!map) return null;
 
     const drawInteraction = new Draw({
-      source: source,
+      source: sourceRef.current,
       type: 'LineString',
       maxPoints: 3
     });
@@ -111,11 +112,9 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
       const geometry = feature.getGeometry() as LineString;
       const coords = geometry.getCoordinates();
       
-      // Převedeme souřadnice na WGS84 pro zobrazení
       const wgs84Coords = coords.map(coord => toLonLat(coord));
       setCoordinates(wgs84Coords);
       
-      // Aktualizujeme features a vypočítáme úhel
       updateFeaturesFromCoordinates(coords);
       calculateAngle(coords);
       
@@ -124,15 +123,14 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
     });
 
     return drawInteraction;
-  }, [map, source, updateFeaturesFromCoordinates, calculateAngle]);
+  }, [map, updateFeaturesFromCoordinates, calculateAngle]);
 
   // Vytvoření a správa Modify interakce
   const createModifyInteraction = useCallback(() => {
-    if (!map || !source) return null;
+    if (!map) return null;
 
     const modify = new Modify({
-      source: source,
-      // Přidáme specifický style pro zvýraznění aktivního bodu
+      source: sourceRef.current,
       style: new Style({
         image: new Circle({
           radius: 6,
@@ -148,21 +146,18 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
     });
 
     modify.on('modifyend', () => {
-      // Získáme všechny body v pořadí
-      const points = source.getFeatures()
+      const points = sourceRef.current.getFeatures()
         .filter(f => f.getGeometry() instanceof Point)
         .sort((a, b) => (a.get('pointIndex') || 0) - (b.get('pointIndex') || 0))
         .map(f => (f.getGeometry() as Point).getCoordinates());
 
       if (points.length === 3) {
-        // Aktualizujeme line string
-        const lineStringFeature = source.getFeatures()
+        const lineStringFeature = sourceRef.current.getFeatures()
           .find(f => f.getGeometry() instanceof LineString);
         if (lineStringFeature) {
           (lineStringFeature.getGeometry() as LineString).setCoordinates(points);
         }
 
-        // Aktualizujeme state s novými souřadnicemi
         const wgs84Coords = points.map(coord => toLonLat(coord));
         setCoordinates(wgs84Coords);
         calculateAngle(points);
@@ -170,9 +165,8 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
     });
 
     return modify;
-  }, [map, source, calculateAngle]);
+  }, [map, calculateAngle]);
 
-  // Řízení aktivního stavu měření
   useEffect(() => {
     if (!map) return;
 
@@ -185,7 +179,6 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
         if (drawInteraction) map.addInteraction(drawInteraction);
       }
       
-      // Vždy vytvoříme Modify interakci, když je komponenta aktivní
       modifyInteraction = createModifyInteraction();
       if (modifyInteraction) {
         map.addInteraction(modifyInteraction);
@@ -220,15 +213,15 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
     setIsMeasuring(true);
     setAngle(0);
     setCoordinates([]);
-    source.clear();
-  }, [isActive, onActivate, source]);
+    sourceRef.current.clear();
+  }, [isActive, onActivate]);
 
   const stopMeasurement = useCallback(() => {
     setIsMeasuring(false);
     setAngle(0);
     setCoordinates([]);
-    source.clear();
-  }, [source]);
+    sourceRef.current.clear();
+  }, []);
 
   const handleCoordinateChange = (index: number, coord: 'lon' | 'lat', value: string) => {
     const newCoordinates = [...coordinates];
@@ -239,7 +232,6 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive, onActivat
     newCoordinates[index][coord === 'lon' ? 0 : 1] = newValue;
     setCoordinates(newCoordinates);
     
-    // Převedeme souřadnice do formátu mapy a aktualizujeme features
     const mapCoords = newCoordinates.map(coord => fromLonLat(coord));
     updateFeaturesFromCoordinates(mapCoords);
     calculateAngle(mapCoords);
