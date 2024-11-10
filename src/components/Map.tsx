@@ -11,11 +11,11 @@ import CursorCoordinates from './CursorCoordinates';
 
 const MapComponent: React.FC = () => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const {setMap} = useMeasurement();
+  const { setMap } = useMeasurement();
   
   useEffect(() => {
     if (!mapRef.current) return;
-
+    
     console.log('Initializing map');
     const initialMap = new Map({
       target: mapRef.current,
@@ -29,21 +29,36 @@ const MapComponent: React.FC = () => {
         zoom: 7,
       }),
     });
-
+    
     setMap(initialMap);
     console.log('Map initialized');
-
+    
     return () => {
       console.log('Cleaning up map');
       initialMap.setTarget(undefined);
       setMap(null);
     };
   }, [setMap]);
-
+  
   return (
-    <div>
-      <div ref={mapRef} style={{ width: '100%', height: '500px', position: 'relative', overflow: 'hidden' }} />
-      <div style={{ marginTop: '20px' }}>
+    <div className="map-wrapper" style={{ 
+      minHeight: '100vh',
+      paddingBottom: '8rem' // Přidaný padding 8cm na spodní části
+    }}>
+      <div 
+        ref={mapRef} 
+        style={{ 
+          width: '100%', 
+          height: '500px', 
+          position: 'relative', 
+          overflow: 'hidden' 
+        }} 
+      />
+      <div style={{ 
+        marginBottom: '180px',
+        position: 'relative', 
+        zIndex: 1 
+      }}>
         <CursorCoordinates />
         <MeasurementContainer />
       </div>
