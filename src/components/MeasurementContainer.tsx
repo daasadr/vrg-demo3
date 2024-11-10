@@ -18,8 +18,8 @@ const HELP_TEXTS = {
   ],
   polyline: [
     'Vyznačte v mapě body polyčáry nebo zapište čístelné souřadnice do polí.',
-    'Když jste označili poslední bod polyčáry, ukončete kreslení dvojklikem v tomto bodě.',
-    'Polohu bodů můžete upravovat přetažením nebo změnou číselných souřadnic.',
+    'Když jste označili poslední bod polyčáry, ukončete kreslení opakovaným kliknutím v tomto bodě.',
+    'Polohu bodů můžete upravovat přetažením na mapě nebo změnou číselných souřadnic.',
     'Zpět do výběru měření se vrátíte tlačítkem "Ukončit měření".'
   ]
 };
