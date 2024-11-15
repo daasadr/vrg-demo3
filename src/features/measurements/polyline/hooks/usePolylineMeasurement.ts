@@ -1,49 +1,24 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { TextField, Box, Typography, IconButton, ToggleButton, ToggleButtonGroup, Button } from '@mui/material';
-import { Map } from 'ol';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import { Draw, Modify } from 'ol/interaction';
-import { Style, Stroke, Circle as CircleStyle, Fill } from 'ol/style';
 import { LineString, Point } from 'ol/geom';
 import { getLength } from 'ol/sphere';
 import { transform } from 'ol/proj';
 import Feature from 'ol/Feature';
-import { Coordinate } from 'ol/coordinate';
-import { useMeasurement } from '../components/MeasurementContext';
-import CloseIcon from '@mui/icons-material/Close';
+import { Style, Stroke, Circle as CircleStyle, Fill } from 'ol/style';
+import { useMeasurement } from '../../shared/contexts/MeasurementContext';
+import { MeasurementUnit, PointCoordinate, UsePolylineMeasurementReturn } from '../types/polyline.types';
 
-interface PolylineMeasurementProps {
-  isActive: boolean;
-  onActivate: () => void;
-}
-
-interface PointCoordinate {
-  lon: string;
-  lat: string;
-}
-
-const PolylineMeasurement: React.FC<PolylineMeasurementProps> = ({ isActive }) => {
+export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
   const { map, activeMeasurement } = useMeasurement();
   const [source] = useState<VectorSource>(() => new VectorSource());
   const [totalDistance, setTotalDistance] = useState<number | null>(null);
   const [points, setPoints] = useState<PointCoordinate[]>([]);
-  const [unit, setUnit] = useState<'kilometers' | 'miles'>('kilometers');
+  const [unit, setUnit] = useState<MeasurementUnit>('kilometers');
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const drawInteractionRef = useRef<Draw | null>(null);
   const modifyInteractionRef = useRef<Modify | null>(null);
-
-  const longitudeInputProps = {
-    step: 0.01,
-    min: -180,
-    max: 180,
-  };
-
-  const latitudeInputProps = {
-    step: 0.01,
-    min: -90,
-    max: 90,
-  };
 
   const convertDistance = useCallback((distanceInKm: number): number => {
     return unit === 'kilometers' ? distanceInKm : distanceInKm * 0.621371;
@@ -178,30 +153,6 @@ const PolylineMeasurement: React.FC<PolylineMeasurementProps> = ({ isActive }) =
     drawInteractionRef.current = draw;
   }, [map, source, createStyleFunction, updateMeasurement]);
 
-  const handleCoordinateChange = (index: number, field: 'lon' | 'lat', value: string) => {
-    const newPoints = [...points];
-    newPoints[index] = {
-      ...newPoints[index],
-      [field]: value
-    };
-    setPoints(newPoints);
-  };
-
-  const handleUnitChange = (_: React.MouseEvent<HTMLElement>, newUnit: 'kilometers' | 'miles') => {
-    if (newUnit !== null) {
-      setUnit(newUnit);
-    }
-  };
-
-  const addNewPoint = () => {
-    setPoints([...points, { lon: '', lat: '' }]);
-  };
-
-  const removePoint = (index: number) => {
-    const newPoints = points.filter((_, i) => i !== index);
-    setPoints(newPoints);
-  };
-
   useEffect(() => {
     if (!map || !activeMeasurement) return;
 
@@ -246,67 +197,41 @@ const PolylineMeasurement: React.FC<PolylineMeasurementProps> = ({ isActive }) =
     updateMapFeatures();
   }, [points, updateMapFeatures]);
 
-  return (
-    <Box sx={{ mt: 2 }}>
-      {totalDistance !== null && (
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          Celková vzdálenost: {totalDistance.toFixed(2)} {unit === 'kilometers' ? 'km' : 'mi'}
-        </Typography>
-      )}
-      
-      <ToggleButtonGroup
-        value={unit}
-        exclusive
-        onChange={handleUnitChange}
-        size="small"
-        sx={{ mb: 2 }}
-      >
-        <ToggleButton value="kilometers">km</ToggleButton>
-        <ToggleButton value="miles">mi</ToggleButton>
-      </ToggleButtonGroup>
+  const handleUnitChange = (_: React.MouseEvent<HTMLElement>, newUnit: MeasurementUnit) => {
+    if (newUnit !== null) {
+      setUnit(newUnit);
+    }
+  };
 
-      <Box>
-        {points.map((point, index) => (
-          <Box key={index} sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
-            <TextField
-              label={`Bod ${index + 1} - Zeměpisná délka`}
-              value={point.lon}
-              onChange={(e) => handleCoordinateChange(index, 'lon', e.target.value)}
-              type="number"
-              inputProps={longitudeInputProps}
-              size="small"
-              sx={{ width: '180px', mr: 1 }}
-            />
-            <TextField
-              label={`Bod ${index + 1} - Zeměpisná šířka`}
-              value={point.lat}
-              onChange={(e) => handleCoordinateChange(index, 'lat', e.target.value)}
-              type="number"
-              inputProps={latitudeInputProps}
-              size="small"
-              sx={{ width: '180px', mr: 1 }}
-            />
-            <IconButton
-              onClick={() => removePoint(index)}
-              size="small"
-              sx={{ ml: 1 }}
-              aria-label={`Odstranit bod ${index + 1}`}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        ))}
-        
-        <Button
-          variant="outlined"
-          onClick={addNewPoint}
-          sx={{ mt: 2 }}
-        >
-          Přidat bod
-        </Button>
-      </Box>
-    </Box>
-  );
+  const handleCoordinateChange = (index: number, field: 'lon' | 'lat', value: string) => {
+    const newPoints = [...points];
+    newPoints[index] = {
+      ...newPoints[index],
+      [field]: value
+    };
+    setPoints(newPoints);
+  };
+
+  const addNewPoint = () => {
+    setPoints([...points, { lon: '', lat: '' }]);
+  };
+
+  const removePoint = (index: number) => {
+    const newPoints = points.filter((_, i) => i !== index);
+    setPoints(newPoints);
+  };
+
+  return {
+    source,
+    totalDistance,
+    points,
+    unit,
+    vectorLayerRef,
+    drawInteractionRef,
+    modifyInteractionRef,
+    handleUnitChange,
+    handleCoordinateChange,
+    addNewPoint,
+    removePoint
+  };
 };
-
-export default PolylineMeasurement;

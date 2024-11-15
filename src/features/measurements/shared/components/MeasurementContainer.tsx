@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
-import { useMeasurement } from './MeasurementContext';
-import DistanceMeasurement from '../DistanceMeasurement/DistanceMeasurement';
-import AngleMeasurement from '../AngleMeasurement/AngleMeasurement';
-import PolylineMeasurement from '../PolylineMeasurement/PolylineMeasurement';
-import './MeasurementContainer.css';
+import { useMeasurement } from '../contexts/MeasurementContext';
+import  DistanceMeasurement  from '../../distance/components/DistanceMeasurement';
+import  AngleMeasurement  from '../../angle/components/AngleMeasurement';
+import  PolylineMeasurement  from '../../polyline/components/PolylineMeasurement';
+import '../../../../styles/MeasurementContainer.css';
 
 const HELP_TEXTS = {
   distance: [
-    'Vyznačte dva body v mapě, nebo vložte do souřadnice do políček.',
+    'Vyznačte dva body v mapě, nebo napište číselné souřadnice do políček.',
     'Polohu bodů můžete dále upravovat přetažením v mapě nebo úpravou číselných hodnot souřadnic.',
     'Tlačítko "Ukončit měření" Vás vrátí do výběru měření.'
   ],
   angle: [
-    'Vyznačte úhel na mapě pomocí tří bodů, nebo zapište číselné souřadnice bodů do polí.',
+    'Vyznačte úhel na mapě pomocí tří bodů, nebo zapište číselné souřadnice bodů do políček.',
     'Polohu bodů můžete dále upravovat přetažením nebo úpravou číselných hodnot.',
     'Tlačítkem "Ukončit měření" se vrátíte do výběru měření.'
   ],
   polyline: [
-    'Vyznačte v mapě body polyčáry nebo zapište čístelné souřadnice do polí.',
+    'Vyznačte v mapě body polyčáry nebo zapište číselné souřadnice do políček.',
     'Když jste označili poslední bod polyčáry, ukončete kreslení opakovaným kliknutím v tomto bodě.',
     'Polohu bodů můžete upravovat přetažením na mapě nebo změnou číselných souřadnic.',
     'Zpět do výběru měření se vrátíte tlačítkem "Ukončit měření".'

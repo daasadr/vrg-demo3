@@ -5,8 +5,8 @@ import View from 'ol/View';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
 import { fromLonLat } from 'ol/proj';
-import { MeasurementProvider, useMeasurement } from './MeasurementContext';
-import MeasurementContainer from './MeasurementContainer';
+import { MeasurementProvider, useMeasurement } from '../../measurements/shared/contexts/MeasurementContext';
+import MeasurementContainer from '../../measurements/shared/components/MeasurementContainer';
 import CursorCoordinates from './CursorCoordinates';
 
 const MapComponent: React.FC = () => {
@@ -43,7 +43,7 @@ const MapComponent: React.FC = () => {
   return (
     <div className="map-wrapper" style={{ 
       minHeight: '100vh',
-      paddingBottom: '8rem' // Přidaný padding 8cm na spodní části
+      paddingBottom: '8rem' 
     }}>
       <div 
         ref={mapRef} 

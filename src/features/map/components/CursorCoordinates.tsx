@@ -3,7 +3,7 @@ import { Map } from 'ol';
 import { transform } from 'ol/proj';
 import Overlay from 'ol/Overlay';
 import { Box, Switch, FormControlLabel } from '@mui/material';
-import { useMeasurement } from '../components/MeasurementContext';
+import { useMeasurement } from '../../measurements/shared/contexts/MeasurementContext';
 
 interface CursorCoordinatesProps {
   initialShowCoordinates?: boolean;
@@ -21,7 +21,6 @@ const CursorCoordinates: React.FC<CursorCoordinatesProps> = ({
     console.log('CursorCoordinates mounted, map:', !!map);
     if (!map) return;
 
-    // Vytvoření elementu pro zobrazení souřadnic
     const element = document.createElement('div');
     element.className = 'cursor-coordinates';
     element.style.cssText = `
@@ -39,7 +38,6 @@ const CursorCoordinates: React.FC<CursorCoordinatesProps> = ({
     elementRef.current = element;
     document.body.appendChild(element);
 
-    // Vytvoření overlay
     const overlay = new Overlay({
       element: element,
       positioning: 'center-left',

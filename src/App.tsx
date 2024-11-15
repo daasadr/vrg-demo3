@@ -2,8 +2,8 @@ import React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Container from '@mui/material/Container';
-import Header from './components/Header';
-import Map from './components/Map';
+import Header from './components/ui/layout/Header';
+import Map from './features/map/components/Map';
 
 
 const theme = createTheme({
