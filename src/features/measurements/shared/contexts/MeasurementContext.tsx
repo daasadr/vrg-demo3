@@ -2,8 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef } from 
 import { Map } from 'ol';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-
-export type MeasurementType = 'distance' | 'angle' | 'polyline' | null;
+import { MeasurementType } from '../types/measurement.types';
 
 export interface MeasurementLayers {
   distance: VectorLayer<VectorSource>;
@@ -23,7 +22,7 @@ export interface MeasurementContextType {
 
 const createVectorLayer = () => new VectorLayer({
   source: new VectorSource(),
-  style: undefined // zde můžete definovat výchozí styl
+  style: undefined // zde definovat výchozí styl
 });
 
 const MeasurementContext = createContext<MeasurementContextType | undefined>(undefined);

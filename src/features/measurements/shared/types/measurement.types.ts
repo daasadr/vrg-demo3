@@ -8,5 +8,6 @@ export type MeasurementPoint = {
   id: string;
 };
 
+export type MeasurementType = 'distance' | 'angle' | 'polyline' | null;
 export type DistanceUnit = 'km' | 'mi';
 export type AngleUnit = 'degrees' | 'radians';

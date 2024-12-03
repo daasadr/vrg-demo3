@@ -21,18 +21,21 @@ export const NumericInput: React.FC<NumericInputProps> = ({
   allowEmptyValue = false,
   ...textFieldProps
 }) => {
-  const formatValue = React.useCallback((val: number | string): string => {
-    if (val === '' || val === '-') return val;
-    const num = typeof val === 'string' ? parseFloat(val) : val;
-    if (isNaN(num)) return allowEmptyValue ? '' : '0';
-    return num.toLocaleString('en-US', {
-      minimumFractionDigits: precision,
-      maximumFractionDigits: precision,
-      useGrouping: false
-    });
-  }, [allowEmptyValue, precision]);
+  const formatValue = React.useCallback(
+    (val: number | string): string => {
+      if (val === '' || val === '-') return val;
+      const num = typeof val === 'string' ? parseFloat(val) : val;
+      if (isNaN(num)) return allowEmptyValue ? '' : '0';
+      return num.toLocaleString('en-US', {
+        minimumFractionDigits: precision,
+        maximumFractionDigits: precision,
+        useGrouping: false
+      });
+    },
+    [allowEmptyValue, precision]
+  );
 
-  const [internalValue, setInternalValue] = React.useState<string>('');
+  const [internalValue, setInternalValue] = React.useState<string>(formatValue(value));
   const [isEditing, setIsEditing] = React.useState(false);
 
   React.useEffect(() => {
@@ -43,12 +46,11 @@ export const NumericInput: React.FC<NumericInputProps> = ({
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value;
+    const isSpecialChar = newValue === '' || newValue === '-' || newValue === '.';
     
-    if (newValue === '' || newValue === '-' || newValue === '.') {
+    if (isSpecialChar) {
       setInternalValue(newValue);
-      if (allowEmptyValue) {
-        onChange('');
-      }
+      if (allowEmptyValue) onChange('');
       return;
     }
 
@@ -57,17 +59,14 @@ export const NumericInput: React.FC<NumericInputProps> = ({
     
     setInternalValue(sanitizedValue);
 
-    if (!isNaN(parsed)) {
-      if (min !== undefined && parsed < min) return;
-      if (max !== undefined && parsed > max) return;
+    if (!isNaN(parsed) && (min === undefined || parsed >= min) && (max === undefined || parsed <= max)) {
       onChange(parsed);
     }
   };
 
   const handleFocus = () => {
     setIsEditing(true);
-    const rawValue = value.toString();
-    setInternalValue(rawValue);
+    setInternalValue(value.toString());
   };
 
   const handleBlur = () => {
@@ -97,12 +96,11 @@ export const NumericInput: React.FC<NumericInputProps> = ({
     const currentValue = parseFloat(internalValue) || 0;
     const newValue = direction === 'up' ? currentValue + step : currentValue - step;
     
-    if (min !== undefined && newValue < min) return;
-    if (max !== undefined && newValue > max) return;
-    
-    const rounded = Number(newValue.toFixed(precision));
-    setInternalValue(formatValue(rounded));
-    onChange(rounded);
+    if ((min === undefined || newValue >= min) && (max === undefined || newValue <= max)) {
+      const rounded = Number(newValue.toFixed(precision));
+      setInternalValue(formatValue(rounded));
+      onChange(rounded);
+    }
   };
 
   return (
@@ -118,10 +116,8 @@ export const NumericInput: React.FC<NumericInputProps> = ({
         step,
         min,
         max,
-        onKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-          if (textFieldProps.inputProps?.onKeyDown) {
-            (textFieldProps.inputProps.onKeyDown as React.KeyboardEventHandler<HTMLInputElement | HTMLTextAreaElement>)(e);
-          }
+        onKeyDown: (e) => {
+          textFieldProps.inputProps?.onKeyDown?.(e as any);
           if (e.key === 'ArrowUp') {
             e.preventDefault();
             handleStep('up');
