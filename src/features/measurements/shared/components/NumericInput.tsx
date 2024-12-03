@@ -21,50 +21,88 @@ export const NumericInput: React.FC<NumericInputProps> = ({
   allowEmptyValue = false,
   ...textFieldProps
 }) => {
-  // Interní stav pro neformátovanou hodnotu během editace
-  const [internalValue, setInternalValue] = React.useState<string>(
-    formatValue(value, precision)
-  );
-
-  // Formátování hodnoty na požadovaný počet desetinných míst
-  function formatValue(val: number | string, decimals: number): string {
+  const formatValue = React.useCallback((val: number | string): string => {
     if (val === '' || val === '-') return val;
     const num = typeof val === 'string' ? parseFloat(val) : val;
     if (isNaN(num)) return allowEmptyValue ? '' : '0';
-    return num.toFixed(decimals);
-  }
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: precision,
+      maximumFractionDigits: precision,
+      useGrouping: false
+    });
+  }, [allowEmptyValue, precision]);
 
-  // Handler pro změnu hodnoty
+  const [internalValue, setInternalValue] = React.useState<string>('');
+  const [isEditing, setIsEditing] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      setInternalValue(formatValue(value));
+    }
+  }, [value, formatValue, isEditing]);
+
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.value;
-    setInternalValue(newValue);
-
-    // Pokud je hodnota prázdná a je povoleno mít prázdnou hodnotu
-    if (newValue === '' && allowEmptyValue) {
-      onChange('');
+    
+    if (newValue === '' || newValue === '-' || newValue === '.') {
+      setInternalValue(newValue);
+      if (allowEmptyValue) {
+        onChange('');
+      }
       return;
     }
 
-    const parsed = parseFloat(newValue);
+    const sanitizedValue = newValue.replace(/[^\d.-]/g, '');
+    const parsed = parseFloat(sanitizedValue);
+    
+    setInternalValue(sanitizedValue);
+
     if (!isNaN(parsed)) {
-      // Kontrola limitů
       if (min !== undefined && parsed < min) return;
       if (max !== undefined && parsed > max) return;
       onChange(parsed);
     }
   };
 
-  // Handler pro ztrátu focusu
+  const handleFocus = () => {
+    setIsEditing(true);
+    const rawValue = value.toString();
+    setInternalValue(rawValue);
+  };
+
   const handleBlur = () => {
-    if (internalValue === '' && !allowEmptyValue) {
-      const formatted = formatValue(0, precision);
-      setInternalValue(formatted);
-      onChange(0);
-    } else if (internalValue !== '') {
-      const formatted = formatValue(internalValue, precision);
-      setInternalValue(formatted);
-      onChange(parseFloat(formatted));
+    setIsEditing(false);
+    
+    if (internalValue === '' || internalValue === '-' || internalValue === '.') {
+      if (!allowEmptyValue) {
+        const formatted = formatValue(0);
+        setInternalValue(formatted);
+        onChange(0);
+      }
+      return;
     }
+
+    const parsed = parseFloat(internalValue);
+    if (!isNaN(parsed)) {
+      const formatted = formatValue(parsed);
+      setInternalValue(formatted);
+      onChange(parsed);
+    } else if (!allowEmptyValue) {
+      setInternalValue(formatValue(0));
+      onChange(0);
+    }
+  };
+
+  const handleStep = (direction: 'up' | 'down') => {
+    const currentValue = parseFloat(internalValue) || 0;
+    const newValue = direction === 'up' ? currentValue + step : currentValue - step;
+    
+    if (min !== undefined && newValue < min) return;
+    if (max !== undefined && newValue > max) return;
+    
+    const rounded = Number(newValue.toFixed(precision));
+    setInternalValue(formatValue(rounded));
+    onChange(rounded);
   };
 
   return (
@@ -73,12 +111,25 @@ export const NumericInput: React.FC<NumericInputProps> = ({
       type="number"
       value={internalValue}
       onChange={handleChange}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       inputProps={{
         ...textFieldProps.inputProps,
         step,
         min,
         max,
+        onKeyDown: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+          if (textFieldProps.inputProps?.onKeyDown) {
+            (textFieldProps.inputProps.onKeyDown as React.KeyboardEventHandler<HTMLInputElement | HTMLTextAreaElement>)(e);
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            handleStep('up');
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            handleStep('down');
+          }
+        },
       }}
     />
   );

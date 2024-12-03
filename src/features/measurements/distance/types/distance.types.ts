@@ -1,32 +1,38 @@
 import { Feature } from 'ol';
-import { LineString } from 'ol/geom';
-import { Draw, Modify } from 'ol/interaction';
-import { MutableRefObject } from 'react';
-
-export interface DrawInteractionResult {
-  startDrawing: () => void;
-  stopDrawing: () => void;
-  drawInteractionRef: MutableRefObject<Draw | null>;
-  modifyInteraction: Modify | null;
-}
+import { Point, LineString, Geometry } from 'ol/geom';
+import { Style } from 'ol/style';
 
 export type DistanceUnit = 'km' | 'mi';
 
-export interface MeasurementFeature extends Feature<LineString> {
-  getGeometry(): LineString;
+export interface DistancePoint {
+  longitude: number;
+  latitude: number;
 }
 
 export interface DistanceMeasurementProps {
-  isActive?: boolean;
+  isActive: boolean;
   onActivate: () => void;
-  
 }
-export interface NumericalInputProps {
-  onCoordinatesChange: (start: [number, number], end: [number, number]) => void;
-  initialStart?: [number, number];
-  initialEnd?: [number, number];
-  mapPoints?: {
-    start?: [number, number];
-    end?: [number, number];
-  };
+
+export interface DistanceNumericalInputProps {
+  startPoint: DistancePoint;
+  endPoint: DistancePoint;
+  onStartPointChange: (point: DistancePoint) => void;
+  onEndPointChange: (point: DistancePoint) => void;
+  unit: DistanceUnit;
+  onUnitChange: (unit: DistanceUnit) => void;
+  distance: number;
 }
+
+export interface MeasurementFeatures {
+  line?: Feature<LineString>;
+  startPoint?: Feature<Geometry>;
+  endPoint?: Feature<Geometry>;
+}
+
+export interface StyleOptions {
+  isSelected?: boolean;
+  isHovered?: boolean;
+}
+
+export type StyleFunction = (options: StyleOptions) => Style;

@@ -1,128 +1,109 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Box, Typography } from '@mui/material';
-import { transform } from 'ol/proj';
-import { NumericalInputProps } from '../types/distance.types';
+import React from 'react';
+import { Box, FormControl, InputLabel, MenuItem, Select, Grid, Typography } from '@mui/material';
 import { NumericInput } from '../../shared/components/NumericInput';
+import { DistanceUnit, MeasurementPoint } from '../../shared/types/measurement.types';
 
-const DistanceNumericalInput: React.FC<NumericalInputProps> = ({
-  onCoordinatesChange,
-  initialStart,
-  initialEnd,
-  mapPoints,
+interface DistanceNumericalInputProps {
+  points: MeasurementPoint[];
+  onCoordinateChange: (index: number, field: 'longitude' | 'latitude', value: string) => void;
+  unit: DistanceUnit;
+  onUnitChange: (unit: DistanceUnit) => void;
+  distance: number;
+}
+
+const DistanceNumericalInput: React.FC<DistanceNumericalInputProps> = ({
+  points,
+  onCoordinateChange,
+  unit,
+  onUnitChange,
+  distance
 }) => {
-   const [start, setStart] = useState<[number, number]>(
-    initialStart ? [initialStart[0], initialStart[1]] : [0, 0]
-  );
-  const [end, setEnd] = useState<[number, number]>(
-    initialEnd ? [initialEnd[0], initialEnd[1]] : [0, 0]
-  );
-  const isInternalUpdate = useRef(false);
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-
-const updateCoordinates = useCallback((newStart: [number, number], newEnd: [number, number]) => {
-  if (isEditing) return;
-
-  const transformedStart = transform(newStart, 'EPSG:4326', 'EPSG:3857') as [number, number];
-  const transformedEnd = transform(newEnd, 'EPSG:4326', 'EPSG:3857') as [number, number];
-
-  if (!isInternalUpdate.current) {
-    onCoordinatesChange(transformedStart, transformedEnd);
-  }
-}, [onCoordinatesChange, isEditing]);
-
-useEffect(() => {
-  if (!isEditing && mapPoints?.start && mapPoints?.end) {
-    isInternalUpdate.current = true;
-
-    const transformedStart = transform(mapPoints.start, 'EPSG:3857', 'EPSG:4326');
-    const transformedEnd = transform(mapPoints.end, 'EPSG:3857', 'EPSG:4326');
-
-    setStart([
-      parseFloat(transformedStart[0].toFixed(5)),
-      parseFloat(transformedStart[1].toFixed(5))
-    ]);
-    setEnd([
-      parseFloat(transformedEnd[0].toFixed(5)),
-      parseFloat(transformedEnd[1].toFixed(5))
-    ]);
-
-    isInternalUpdate.current = false;
-  }
-}, [mapPoints, isEditing]);
-
- const handleCoordinateChange = (
-  point: 'start' | 'end',
-  coord: 'x' | 'y',
-  value: number
-) => {
-  setIsEditing(true);
-  if (point === 'start') {
-    setStart((prev) => [
-      coord === 'x' ? value : prev[0],
-      coord === 'y' ? value : prev[1],
-    ]);
-    onCoordinatesChange([value, start[1]], end);
-  } else {
-    setEnd((prev) => [
-      coord === 'x' ? value : prev[0],
-      coord === 'y' ? value : prev[1],
-    ]);
-    onCoordinatesChange(start, [value, end[1]]);
-  }
-};
-
-  const handleInputBlur = () => {
-  setIsEditing(false);
-};
-
   return (
-    <Box>
-      <Typography variant="subtitle1" sx={{ mb: 2 }}>
-        Zadejte souřadnice bodů:
-      </Typography>
-      
-      <Box display="flex" gap={2} mb={2}>
-        <NumericInput
-  label="Start X"
-  value={start[0]}
-  onChange={(value) => handleCoordinateChange('start', 'x', Number(value))}
-  onBlur={handleInputBlur}
-  precision={5}
-  size="small"
-  sx={{ width: '180px' }}
+    <Box sx={{ mt: 2 }}>
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle1">
+              Počáteční bod
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <NumericInput
+                label="Zeměpisná délka"
+                value={points[0]?.coordinates.longitude ?? ''}
+                onChange={(value) => onCoordinateChange(0, 'longitude', value.toString())}
+                min={-180}
+                max={180}
+                step={0.01}
+                precision={5}
+                size="small"
+                sx={{ width: '180px' }}
+              />
+              <NumericInput
+                label="Zeměpisná šířka"
+                value={points[0]?.coordinates.latitude ?? ''}
+                onChange={(value) => onCoordinateChange(0, 'latitude', value.toString())}
+                min={-90}
+                max={90}
+                step={0.01}
+                precision={5}
+                size="small"
+                sx={{ width: '180px' }}
+              />
+            </Box>
+          </Box>
+        </Grid>
 
-        />
-        <NumericInput
-  label="End X"
-  value={end[0]}
-  onChange={(value) => handleCoordinateChange('end', 'x', Number(value))}
-  onBlur={handleInputBlur}
-  precision={5}
-  size="small"
-  sx={{ width: '180px' }}
-/>
-      </Box>
-      
-      <Box display="flex" gap={2}>
-        <NumericInput
-  label="End Y"
-  value={end[1]}
-  onChange={(value) => handleCoordinateChange('end', 'y', Number(value))}
-  onBlur={handleInputBlur}
-  precision={5}
-  size="small"
-  sx={{ width: '180px' }}
-/>
-        <NumericInput
-          label="End Y"
-          value={end[1]}
-          onChange={(value) => handleCoordinateChange('end', 'y', Number(value))}
-          onBlur={handleInputBlur}
-          precision={5}
-          size="small"
-          sx={{ width: '180px' }}
-        />
-      </Box>
+        <Grid item xs={12}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle1">
+              Koncový bod
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <NumericInput
+                label="Zeměpisná délka"
+                value={points[1]?.coordinates.longitude ?? ''}
+                onChange={(value) => onCoordinateChange(1, 'longitude', value.toString())}
+                min={-180}
+                max={180}
+                step={0.01}
+                precision={5}
+                size="small"
+                sx={{ width: '180px' }}
+              />
+              <NumericInput
+                label="Zeměpisná šířka"
+                value={points[1]?.coordinates.latitude ?? ''}
+                onChange={(value) => onCoordinateChange(1, 'latitude', value.toString())}
+                min={-90}
+                max={90}
+                step={0.01}
+                precision={5}
+                size="small"
+                sx={{ width: '180px' }}
+              />
+            </Box>
+          </Box>
+        </Grid>
+
+        <Grid item xs={12}>
+          <FormControl size="small">
+            <InputLabel>Jednotky</InputLabel>
+            <Select
+              value={unit}
+              onChange={(e) => onUnitChange(e.target.value as DistanceUnit)}
+              label="Jednotky"
+              size="small"
+            >
+              <MenuItem value="km">Kilometry</MenuItem>
+              <MenuItem value="mi">Míle</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Vzdálenost: {distance.toFixed(3)} {unit}
+          </Typography>
+        </Grid>
+      </Grid>
     </Box>
   );
 };

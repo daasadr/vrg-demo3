@@ -63,7 +63,7 @@ const MeasurementContainer = () => {
         return (
           <>
             <HelpTooltip type="distance" />
-            <DistanceMeasurement isActive={true} onActivate={() => {}} />
+            <DistanceMeasurement isActive={true}  />
           </>
         );
       case 'angle':

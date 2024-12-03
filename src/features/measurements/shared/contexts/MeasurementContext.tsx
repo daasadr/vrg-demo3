@@ -1,24 +1,23 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { Map } from 'ol';
-import { Layer } from 'ol/layer';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 
-type MeasurementType = 'distance' | 'angle' | 'polyline' | null;
+export type MeasurementType = 'distance' | 'angle' | 'polyline' | null;
 
-interface MeasurementLayers {
+export interface MeasurementLayers {
   distance: VectorLayer<VectorSource>;
   angle: VectorLayer<VectorSource>;
   polyline: VectorLayer<VectorSource>;
 }
 
-interface MeasurementContextType {
+export interface MeasurementContextType {
   activeMeasurement: MeasurementType;
   map: Map | null;
   measurementLayers: MeasurementLayers;
   setMap: (map: Map | null) => void;
   toggleMeasurement: (type: MeasurementType) => void;
-  clearMeasurement: (type: MeasurementType) => void;
+  clearMeasurement: (type: Exclude<MeasurementType, null>) => void;
   clearAllMeasurements: () => void;
 }
 

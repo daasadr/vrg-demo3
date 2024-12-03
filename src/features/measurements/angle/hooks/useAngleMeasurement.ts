@@ -8,14 +8,13 @@ import { Map } from 'ol';
 import { Coordinate } from 'ol/coordinate';
 import { createStyle, setupMapInteractions } from '../utils/angleMapUtils';
 import { AngleUnit } from '../types/angle.types';
-import { StyleLike } from 'ol/style/Style';
 
 export const useAngleMeasurement = (map: Map | null, isActive: boolean) => {
   const sourceRef = useRef<VectorSource>(new VectorSource());
   const vectorLayerRef = useRef<VectorLayer<VectorSource>>(
     new VectorLayer({
       source: sourceRef.current,
-      style: createStyle() as StyleLike
+      style: createStyle()
     })
   );
 
