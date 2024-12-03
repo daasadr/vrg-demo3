@@ -19,7 +19,8 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const drawInteractionRef = useRef<Draw | null>(null);
   const modifyInteractionRef = useRef<Modify | null>(null);
-
+  const doubleClickZoomRef = useRef<any>(null);
+  
   const convertDistance = useCallback((distanceInKm: number): number => {
     return unit === 'kilometers' ? distanceInKm : distanceInKm * 0.621371;
   }, [unit]);
@@ -63,34 +64,24 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
     }
   }, [source, convertDistance]);
 
-  const updateMapFeatures = useCallback(() => {
-    source.clear();
+const disableDoubleClickZoom = useCallback(() => {
+    if (!map) return;
     
-    const validPoints = points.filter(p => 
-      p.lon !== '' && p.lat !== '' && 
-      !isNaN(Number(p.lon)) && !isNaN(Number(p.lat))
-    );
+    // Store and disable double-click zoom interaction
+    map.getInteractions().forEach((interaction) => {
+      if (interaction.get('type') === 'doubleclick-zoom') {
+        doubleClickZoomRef.current = interaction;
+        interaction.setActive(false);
+      }
+    });
+  }, [map]);
 
-    if (validPoints.length > 1) {
-      const mapCoords = validPoints.map(point => 
-        transform([Number(point.lon), Number(point.lat)], 'EPSG:4326', 'EPSG:3857')
-      );
-
-      const lineFeature = new Feature(new LineString(mapCoords));
-      source.addFeature(lineFeature);
-
-      mapCoords.forEach((coord) => {
-        const pointFeature = new Feature(new Point(coord));
-        source.addFeature(pointFeature);
-      });
-
-      const geometry = lineFeature.getGeometry() as LineString;
-      const length = getLength(geometry) / 1000;
-      setTotalDistance(convertDistance(length));
-    } else {
-      setTotalDistance(null);
+  const enableDoubleClickZoom = useCallback(() => {
+    if (doubleClickZoomRef.current) {
+      doubleClickZoomRef.current.setActive(true);
+      doubleClickZoomRef.current = null;
     }
-  }, [points, source, convertDistance]);
+  }, []);
 
   const initializeInteractions = useCallback(() => {
     if (!map) return;
@@ -110,12 +101,7 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
       style: createStyleFunction(),
     });
 
-    // Disable double-click zoom while drawing
-    map.getInteractions().forEach((interaction) => {
-      if (interaction.get('type') === 'doubleclick-zoom') {
-        interaction.setActive(false);
-      }
-    });
+    disableDoubleClickZoom();
 
     draw.on('drawstart', (event) => {
       source.clear();
@@ -135,24 +121,31 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
     draw.on('drawend', () => {
       map.removeInteraction(draw);
       
-      const modify = new Modify({
+       const modify = new Modify({
         source: source,
         style: createStyleFunction(),
       });
+      
+      modify.on('modifystart', () => {
+        disableDoubleClickZoom();
+      });
+      
       modify.on('modifyend', () => {
         const features = source.getFeatures();
         const lineFeature = features.find(f => f.getGeometry() instanceof LineString);
         if (lineFeature) {
           updateMeasurement(lineFeature.getGeometry() as LineString);
         }
+        enableDoubleClickZoom();
       });
       map.addInteraction(modify);
       modifyInteractionRef.current = modify;
+      enableDoubleClickZoom();
     });
 
     map.addInteraction(draw);
     drawInteractionRef.current = draw;
-  }, [map, source, createStyleFunction, updateMeasurement]);
+  }, [map, source, createStyleFunction, updateMeasurement, disableDoubleClickZoom, enableDoubleClickZoom]);
 
   const startNewMeasurement = useCallback(() => {
     source.clear();
@@ -186,12 +179,7 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
 
     return () => {
       if (map) {
-        // Re-enable double-click zoom
-        map.getInteractions().forEach((interaction) => {
-          if (interaction.get('type') === 'doubleclick-zoom') {
-            interaction.setActive(true);
-          }
-        });
+        enableDoubleClickZoom();
 
         if (vectorLayerRef.current) {
           map.removeLayer(vectorLayerRef.current);
@@ -207,7 +195,40 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
         }
       }
     };
-  }, [map, activeMeasurement, source, createStyleFunction, initializeInteractions]);
+  }, [map, activeMeasurement, source, createStyleFunction, initializeInteractions, ]);
+  
+  const updateMapFeatures = useCallback(() => {
+  source.clear();
+  
+  const validPoints = points.filter(p => 
+    p.lon !== '' && p.lat !== '' && 
+    !isNaN(Number(p.lon)) && !isNaN(Number(p.lat))
+  );
+
+  if (validPoints.length > 1) {
+    const mapCoords = validPoints.map(point => 
+      transform([Number(point.lon), Number(point.lat)], 'EPSG:4326', 'EPSG:3857')
+    );
+
+    // Add line feature
+    const lineFeature = new Feature(new LineString(mapCoords));
+    lineFeature.setStyle(createStyleFunction());
+    source.addFeature(lineFeature);
+
+    // Add point features
+    mapCoords.forEach((coord) => {
+      const pointFeature = new Feature(new Point(coord));
+      pointFeature.setStyle(createStyleFunction());
+      source.addFeature(pointFeature);
+    });
+
+    const geometry = lineFeature.getGeometry() as LineString;
+    const length = getLength(geometry) / 1000;
+    setTotalDistance(convertDistance(length));
+  } else {
+    setTotalDistance(null);
+  }
+}, [points, source, createStyleFunction, convertDistance]);
 
   useEffect(() => {
     updateMapFeatures();

@@ -1,10 +1,9 @@
 import React from 'react';
-import { Box, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Button } from '@mui/material';
+import { Box, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent, Button, Typography } from '@mui/material';
 import { useMeasurement } from '../../shared/contexts/MeasurementContext';
 import { useAngleMeasurement } from '../hooks/useAngleMeasurement';
-import { AngleDisplay } from './AngleDisplay';
-import { AngleCoordinatesInput } from './AngleCoordinatesInput';
 import { AngleMeasurementProps } from '../types/angle.types';
+import { AngleNumericalInput } from './AngleNumericalInput';
 
 const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive }) => {
   const { map } = useMeasurement();
@@ -14,14 +13,14 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive }) => {
     setUnit,
     coordinates,
     handleCoordinateChange,
-    measureFromCoordinates,
-    startNewMeasurement
+    startNewMeasurement,
+    formatAngle
   } = useAngleMeasurement(map, isActive);
-
+  
   const handleUnitChange = (event: SelectChangeEvent<string>) => {
     setUnit(event.target.value as 'degrees' | 'radians');
   };
-
+  
   return (
     <Box sx={{ p: 2 }}>
       <Box sx={{ mb: 2 }}>
@@ -40,15 +39,20 @@ const AngleMeasurement: React.FC<AngleMeasurementProps> = ({ isActive }) => {
           </Select>
         </FormControl>
       </Box>
-
-      <AngleDisplay angle={angle} unit={unit} />
-
-      <AngleCoordinatesInput
+      
+      {angle !== 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body1">
+            Změřený úhel: {formatAngle()}
+          </Typography>
+        </Box>
+      )}
+      
+      <AngleNumericalInput 
         coordinates={coordinates}
         onCoordinateChange={handleCoordinateChange}
-        onMeasure={measureFromCoordinates}
       />
-
+      
       <Button
         variant="contained"
         onClick={startNewMeasurement}

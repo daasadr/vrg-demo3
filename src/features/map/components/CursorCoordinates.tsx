@@ -54,13 +54,13 @@ const CursorCoordinates: React.FC<CursorCoordinatesProps> = ({
         return;
       }
 
-      // Získání pixel koordinátů z události
+      // Getting pixel coordinates from an event
       const pixel = map.getEventPixel(evt.originalEvent);
-      // Převod pixel koordinátů na map koordináty
+      // Convert pixel coordinates to map coordinates
       const coordinate = map.getCoordinateFromPixel(pixel);
       
       if (coordinate) {
-        // Transformace z EPSG:3857 do EPSG:4326 (WGS84)
+        // Transformation from EPSG:3857 to EPSG:4326 (WGS84)
         const [lon, lat] = transform(coordinate, 'EPSG:3857', 'EPSG:4326');
         
         if (!isNaN(lon) && !isNaN(lat)) {
@@ -73,12 +73,12 @@ const CursorCoordinates: React.FC<CursorCoordinatesProps> = ({
       }
     };
 
-    // Handler pro opuštění mapy
+    // Map exit handler
     const handleMouseOut = () => {
       overlay.setPosition(undefined);
     };
 
-    // Přidání event listenerů
+    // Adding event listeners
     map.on('pointermove', handleMouseMove);
     const viewport = map.getViewport();
     viewport.addEventListener('mouseout', handleMouseOut);

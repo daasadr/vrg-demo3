@@ -22,7 +22,7 @@ export interface MeasurementContextType {
 
 const createVectorLayer = () => new VectorLayer({
   source: new VectorSource(),
-  style: undefined // zde definovat výchozí styl
+  style: undefined // define default style here
 });
 
 const MeasurementContext = createContext<MeasurementContextType | undefined>(undefined);
@@ -31,7 +31,7 @@ export const MeasurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [activeMeasurement, setActiveMeasurement] = useState<MeasurementType>(null);
   const [map, setMap] = useState<Map | null>(null);
   
-  // Vytvoření a udržování referencí na vrstvy
+  // Creating and maintaining layer references
   const measurementLayers = useRef<MeasurementLayers>({
     distance: createVectorLayer(),
     angle: createVectorLayer(),
@@ -54,12 +54,12 @@ export const MeasurementProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const toggleMeasurement = useCallback((type: MeasurementType) => {
     setActiveMeasurement(prev => {
-      // Pokud vypínáme aktivní měření
+      // If we turn off active measurement
       if (prev === type) {
         return null;
       }
       
-      // Pokud zapínáme nové měření, vyčistíme předchozí
+      // If we turn on a new measurement, we clear the previous one
       if (prev) {
         clearMeasurement(prev);
       }
