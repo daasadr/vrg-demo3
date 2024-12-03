@@ -110,6 +110,7 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
       style: createStyleFunction(),
     });
 
+    // Disable double-click zoom while drawing
     map.getInteractions().forEach((interaction) => {
       if (interaction.get('type') === 'doubleclick-zoom') {
         interaction.setActive(false);
@@ -153,6 +154,20 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
     drawInteractionRef.current = draw;
   }, [map, source, createStyleFunction, updateMeasurement]);
 
+  const startNewMeasurement = useCallback(() => {
+    source.clear();
+    setTotalDistance(null);
+    setPoints([]);
+    
+    if (map && activeMeasurement === 'polyline') {
+      if (modifyInteractionRef.current) {
+        map.removeInteraction(modifyInteractionRef.current);
+        modifyInteractionRef.current = null;
+      }
+      initializeInteractions();
+    }
+  }, [map, activeMeasurement, source, initializeInteractions]);
+
   useEffect(() => {
     if (!map || !activeMeasurement) return;
 
@@ -171,6 +186,7 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
 
     return () => {
       if (map) {
+        // Re-enable double-click zoom
         map.getInteractions().forEach((interaction) => {
           if (interaction.get('type') === 'doubleclick-zoom') {
             interaction.setActive(true);
@@ -232,6 +248,7 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
     handleUnitChange,
     handleCoordinateChange,
     addNewPoint,
-    removePoint
+    removePoint,
+    startNewMeasurement
   };
 };

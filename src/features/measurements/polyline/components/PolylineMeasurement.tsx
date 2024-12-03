@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Typography, ToggleButton, ToggleButtonGroup, Button } from '@mui/material';
 import { usePolylineMeasurement } from '../hooks/usePolylineMeasurement';
 import { PolylineNumericalInput } from './PolylineNumericalInput';
 import { PolylineMeasurementProps } from '../types/polyline.types';
@@ -12,7 +12,8 @@ const PolylineMeasurement: React.FC<PolylineMeasurementProps> = ({ isActive }) =
     handleUnitChange,
     handleCoordinateChange,
     addNewPoint,
-    removePoint
+    removePoint,
+    startNewMeasurement
   } = usePolylineMeasurement();
 
   return (
@@ -40,6 +41,14 @@ const PolylineMeasurement: React.FC<PolylineMeasurementProps> = ({ isActive }) =
         onRemovePoint={removePoint}
         onAddPoint={addNewPoint}
       />
+
+      <Button
+        variant="contained"
+        onClick={startNewMeasurement}
+        sx={{ mt: 3 }}
+      >
+        Nové měření
+      </Button>
     </Box>
   );
 };

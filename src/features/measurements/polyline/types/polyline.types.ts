@@ -27,4 +27,5 @@ export interface UsePolylineMeasurementReturn {
   handleCoordinateChange: (index: number, field: 'lon' | 'lat', value: string) => void;
   addNewPoint: () => void;
   removePoint: (index: number) => void;
+  startNewMeasurement: () => void;
 }

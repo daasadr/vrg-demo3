@@ -1,6 +1,6 @@
 import React from 'react';
-import { Typography, FormControl, InputLabel, Select, MenuItem, Box } from '@mui/material';
-import { AngleDisplayProps, AngleUnit } from '../types/angle.types';
+import { Typography, Box } from '@mui/material';
+import { AngleDisplayProps } from '../types/angle.types';
 
 export const AngleDisplay: React.FC<AngleDisplayProps> = ({ angle, unit }) => {
   const formatAngle = (): string => {
