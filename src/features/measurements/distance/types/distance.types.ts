@@ -1,6 +1,7 @@
 import { Feature } from 'ol';
 import { Point, LineString, Geometry } from 'ol/geom';
 import { Style } from 'ol/style';
+import { MeasurementPoint } from '../../shared/types/measurement.types';
 
 export type DistanceUnit = 'km' | 'mi';
 
@@ -15,13 +16,10 @@ export interface DistanceMeasurementProps {
 }
 
 export interface DistanceNumericalInputProps {
-  startPoint: DistancePoint;
-  endPoint: DistancePoint;
-  onStartPointChange: (point: DistancePoint) => void;
-  onEndPointChange: (point: DistancePoint) => void;
+  points: MeasurementPoint[];
+  updatePoint: (index: number, field: "longitude" | "latitude", value: string) => void;
   unit: DistanceUnit;
-  onUnitChange: (unit: DistanceUnit) => void;
-  distance: number;
+  setUnit: (unit: DistanceUnit) => void;
 }
 
 export interface MeasurementFeatures {
@@ -33,6 +31,13 @@ export interface MeasurementFeatures {
 export interface StyleOptions {
   isSelected?: boolean;
   isHovered?: boolean;
+}
+
+export interface CoordinateInputProps {
+  label: string;
+  point: MeasurementPoint;
+  index: number;
+  onCoordinateChange: (index: number, field: 'longitude' | 'latitude', value: string) => void;
 }
 
 export type StyleFunction = (options: StyleOptions) => Style;

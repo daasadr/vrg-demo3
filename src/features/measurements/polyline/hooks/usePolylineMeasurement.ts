@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-import { Draw, Modify } from 'ol/interaction';
+import { Draw, Modify, Snap } from 'ol/interaction';
 import { LineString, Point } from 'ol/geom';
 import { getLength } from 'ol/sphere';
 import { transform } from 'ol/proj';
@@ -9,6 +9,7 @@ import Feature from 'ol/Feature';
 import { Style, Stroke, Circle as CircleStyle, Fill } from 'ol/style';
 import { useMeasurement } from '../../shared/contexts/MeasurementContext';
 import { MeasurementUnit, PointCoordinate, UsePolylineMeasurementReturn } from '../types/polyline.types';
+import { never } from 'ol/events/condition';
 
 export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
   const { map, activeMeasurement } = useMeasurement();
@@ -19,8 +20,9 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
   const vectorLayerRef = useRef<VectorLayer<VectorSource> | null>(null);
   const drawInteractionRef = useRef<Draw | null>(null);
   const modifyInteractionRef = useRef<Modify | null>(null);
+  const snapInteractionRef = useRef<Snap | null>(null);
   const doubleClickZoomRef = useRef<any>(null);
-  
+
   const convertDistance = useCallback((distanceInKm: number): number => {
     return unit === 'kilometers' ? distanceInKm : distanceInKm * 0.621371;
   }, [unit]);
@@ -30,10 +32,11 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
       stroke: new Stroke({
         color: 'rgba(255, 0, 0, 0.8)',
         width: 2,
+        lineDash: undefined,
       }),
       image: new CircleStyle({
-        radius: 5,
-        fill: new Fill({ color: 'red' }),
+        radius: 6,
+        fill: new Fill({ color: 'rgba(255, 0, 0, 0.8)' }),
         stroke: new Stroke({ color: 'white', width: 2 }),
       }),
     });
@@ -58,16 +61,15 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
       );
       
       setPoints(wgs84Coords.map(coord => ({
-        lon: coord[0].toFixed(2),
-        lat: coord[1].toFixed(2)
+        lon: coord[0].toFixed(6),
+        lat: coord[1].toFixed(6)
       })));
     }
   }, [source, convertDistance]);
 
-const disableDoubleClickZoom = useCallback(() => {
+  const disableDoubleClickZoom = useCallback(() => {
     if (!map) return;
     
-    // Store and disable double-click zoom interaction
     map.getInteractions().forEach((interaction) => {
       if (interaction.get('type') === 'doubleclick-zoom') {
         doubleClickZoomRef.current = interaction;
@@ -86,27 +88,38 @@ const disableDoubleClickZoom = useCallback(() => {
   const initializeInteractions = useCallback(() => {
     if (!map) return;
 
-    if (drawInteractionRef.current) {
-      map.removeInteraction(drawInteractionRef.current);
-      drawInteractionRef.current = null;
-    }
-    if (modifyInteractionRef.current) {
-      map.removeInteraction(modifyInteractionRef.current);
-      modifyInteractionRef.current = null;
-    }
+    // Clean up existing interactions
+    [drawInteractionRef, modifyInteractionRef, snapInteractionRef].forEach(ref => {
+      if (ref.current) {
+        map.removeInteraction(ref.current);
+        ref.current = null;
+      }
+    });
 
     const draw = new Draw({
       source: source,
       type: 'LineString',
       style: createStyleFunction(),
+      maxPoints: 50, // Limit maximum points to prevent performance issues
+      freehand: false,
+      stopClick: false,
+      condition: (event) => {
+        return event.originalEvent.button === 0; // Only left mouse button
+      },
     });
 
     disableDoubleClickZoom();
+
+    const snap = new Snap({
+      source: source,
+      pixelTolerance: 10,
+    });
 
     draw.on('drawstart', (event) => {
       source.clear();
       setPoints([]);
       const feature = event.feature;
+      
       const geometry = feature.getGeometry();
       if (geometry) {
         geometry.on('change', (e) => {
@@ -121,10 +134,12 @@ const disableDoubleClickZoom = useCallback(() => {
     draw.on('drawend', () => {
       map.removeInteraction(draw);
       
-       const modify = new Modify({
-        source: source,
-        style: createStyleFunction(),
-      });
+      const modify = new Modify({
+      source: source,
+      style: createStyleFunction(),
+      pixelTolerance: 10,
+      deleteCondition: never 
+     });
       
       modify.on('modifystart', () => {
         disableDoubleClickZoom();
@@ -138,13 +153,18 @@ const disableDoubleClickZoom = useCallback(() => {
         }
         enableDoubleClickZoom();
       });
+
       map.addInteraction(modify);
       modifyInteractionRef.current = modify;
       enableDoubleClickZoom();
     });
 
     map.addInteraction(draw);
+    map.addInteraction(snap);
+    
     drawInteractionRef.current = draw;
+    snapInteractionRef.current = snap;
+
   }, [map, source, createStyleFunction, updateMeasurement, disableDoubleClickZoom, enableDoubleClickZoom]);
 
   const startNewMeasurement = useCallback(() => {

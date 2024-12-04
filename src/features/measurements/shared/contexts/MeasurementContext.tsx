@@ -2,23 +2,8 @@ import React, { createContext, useContext, useState, useCallback, useRef } from 
 import { Map } from 'ol';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-import { MeasurementType } from '../types/measurement.types';
+import { MeasurementType, MeasurementContextType, MeasurementLayers } from '../types/measurement.types';
 
-export interface MeasurementLayers {
-  distance: VectorLayer<VectorSource>;
-  angle: VectorLayer<VectorSource>;
-  polyline: VectorLayer<VectorSource>;
-}
-
-export interface MeasurementContextType {
-  activeMeasurement: MeasurementType;
-  map: Map | null;
-  measurementLayers: MeasurementLayers;
-  setMap: (map: Map | null) => void;
-  toggleMeasurement: (type: MeasurementType) => void;
-  clearMeasurement: (type: Exclude<MeasurementType, null>) => void;
-  clearAllMeasurements: () => void;
-}
 
 const createVectorLayer = () => new VectorLayer({
   source: new VectorSource(),

@@ -14,6 +14,7 @@ export const useDistanceMeasurement = (
 ) => {
   const [unit, setUnit] = useState<DistanceUnit>('km');
   const [distance, setDistance] = useState<number>(0);
+  const [azimuth, setAzimuth] = useState<number>(0);
   const [hasLine, setHasLine] = useState(false);
   const styles = useDistanceStyles();
   const drawRef = useRef<Draw | null>(null);
@@ -25,6 +26,21 @@ export const useDistanceMeasurement = (
     { coordinates: { longitude: 0, latitude: 0 }, id: crypto.randomUUID() },
     { coordinates: { longitude: 0, latitude: 0 }, id: crypto.randomUUID() }
   ]);
+  
+  const calculateAzimuth = useCallback((start: [number, number], end: [number, number]) => {
+    const deltaLon = (end[0] - start[0]) * Math.PI / 180;
+    const lat1 = start[1] * Math.PI / 180;
+    const lat2 = end[1] * Math.PI / 180;
+    
+    const y = Math.sin(deltaLon) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) -
+              Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLon);
+    
+    let bearing = Math.atan2(y, x) * 180 / Math.PI;
+    bearing = (bearing + 360) % 360; // Normalize to 0-360
+    
+    setAzimuth(Math.round(bearing * 100) / 100);
+  }, []); 
 
   const updatePoint = useCallback((index: number, field: 'longitude' | 'latitude', value: string) => {
     const numValue = parseFloat(value);
@@ -44,24 +60,32 @@ export const useDistanceMeasurement = (
       return newPoints;
     });
     
-    // Ensure we update the line after updating points
     setHasLine(true);
   }, []);
 
-  const calculateDistance = useCallback((coords: number[][]) => {
-    if (!coords || coords.length !== 2) {
-      setDistance(0);
-      return;
-    }
-    
-    const line = new LineString(coords);
-    const lengthInMeters = line.getLength();
-    const distanceValue = unit === 'km' 
-      ? lengthInMeters / 1000 
-      : (lengthInMeters / 1000) * 0.621371;
+const calculateDistance = useCallback((coords: number[][]) => {
+  if (!coords || coords.length !== 2) {
+    setDistance(0);
+    setAzimuth(0);
+    return;
+  }
+  
+  const line = new LineString(coords);
+  const lengthInMeters = line.getLength();
+  const distanceValue = unit === 'km' 
+    ? lengthInMeters / 1000 
+    : (lengthInMeters / 1000) * 0.621371;
 
-    setDistance(Math.round(distanceValue * 1000) / 1000);
-  }, [unit]);
+  setDistance(Math.round(distanceValue * 1000) / 1000);
+
+  const startLonLat = toLonLat(coords[0]);
+  const endLonLat = toLonLat(coords[1]);
+  
+  calculateAzimuth(
+    [startLonLat[0], startLonLat[1]], 
+    [endLonLat[0], endLonLat[1]]
+  );
+}, [unit, calculateAzimuth]);
 
   const updateMapFeatures = useCallback(() => {
     if (!source || !isActive) return;
@@ -135,7 +159,6 @@ export const useDistanceMeasurement = (
       setPoints(newPoints);
       setHasLine(true);
       
-      // Initialize modify interaction
       initializeModifyInteraction();
     });
 
@@ -184,7 +207,6 @@ export const useDistanceMeasurement = (
     modifyRef.current = modify;
   }, [map, source, styles, isActive]);
 
-  // Initialize or cleanup interactions based on active state
   useEffect(() => {
     if (!map || !isActive) {
       if (drawRef.current) map?.removeInteraction(drawRef.current);
@@ -210,8 +232,7 @@ export const useDistanceMeasurement = (
   useEffect(() => {
     updateMapFeatures();
   }, [points, updateMapFeatures]);
-
-  // Handle layer visibility
+  
   useEffect(() => {
     if (!map || !measurementLayers.distance) return;
 
@@ -255,6 +276,7 @@ export const useDistanceMeasurement = (
     unit,
     setUnit,
     distance,
+    azimuth,
     startNewMeasurement
   };
 };

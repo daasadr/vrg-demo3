@@ -4,33 +4,40 @@ import { useDistanceMeasurement } from '../hooks/useDistanceMeasurement';
 import DistanceNumericalInput from './DistanceNumericalInput';
 import { useMeasurement } from '../../shared/contexts/MeasurementContext';
 
+
 const DistanceMeasurement: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const { map } = useMeasurement();
-  const {
-    points,
-    updatePoint,
-    unit,
-    setUnit,
-    distance,
-    startNewMeasurement
+  const { 
+    points, 
+    updatePoint, 
+    unit, 
+    setUnit, 
+    distance, 
+    azimuth,
+    startNewMeasurement 
   } = useDistanceMeasurement(map, isActive);
 
   return (
-    <Box sx={{ p: 2 }}>
-      <DistanceNumericalInput
-        points={points}
-        onCoordinateChange={updatePoint}
-        unit={unit}
-        onUnitChange={setUnit}
-        distance={distance}
-      />
-      <Button
-        variant="contained"
-        onClick={startNewMeasurement}
-        sx={{ mt: 3 }}
-      >
+    <Box>
+      <Button onClick={startNewMeasurement} variant="contained" color="primary">
         Nové měření
       </Button>
+      
+      <DistanceNumericalInput 
+        points={points}
+        updatePoint={updatePoint}
+        unit={unit}
+        setUnit={setUnit}
+      />
+      
+      <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box>
+          <strong>Vzdálenost:</strong> {distance} {unit}
+        </Box>
+        <Box>
+          <strong>Azimut:</strong> {azimuth}°
+        </Box>
+      </Box>
     </Box>
   );
 };
