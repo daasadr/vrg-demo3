@@ -22,9 +22,7 @@
     "build": "craco build",
     "test": "craco test",
     "eject": "react-scripts eject",
-    "prepare": "husky",
-    "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
-    "lint:fix": "eslint src --ext .ts,.tsx,.js,.jsx --fix"
+    "prepare": "husky install"
   },
   "eslintConfig": {
     "extends": [
@@ -51,8 +49,8 @@
     "@types/ol": "^7.0.0",
     "@types/react": "^18.3.4",
     "@types/react-dom": "^18.3.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.1.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
     "typescript": "^4.9.5"
   },
   "description": "A simple web application with map measurement tools",
@@ -60,8 +58,9 @@
   "author": "",
   "license": "ISC",
   "lint-staged": {
-    "src/**/*.{ts,tsx,js,jsx}": [
-      "eslint --fix"
+    "src/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "eslint --max-warnings=0"
     ]
   }
 }
