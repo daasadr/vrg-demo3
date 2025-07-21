@@ -215,8 +215,15 @@ export const useAngleMeasurement = (map: Map | null, isActive: boolean) => {
 
     return () => {
       cleanup();
-      map.removeLayer(vectorLayerRef.current);
-      sourceRef.current.clear();
+      // Capture ref values to avoid stale closure issues
+      const vectorLayer = vectorLayerRef.current;
+      const source = sourceRef.current;
+      if (vectorLayer) {
+        map.removeLayer(vectorLayer);
+      }
+      if (source) {
+        source.clear();
+      }
       setAngle(0);
       setCoordinates([['', ''], ['', ''], ['', '']]);
     };

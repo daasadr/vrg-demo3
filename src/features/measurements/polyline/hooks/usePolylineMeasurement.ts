@@ -215,7 +215,7 @@ export const usePolylineMeasurement = (): UsePolylineMeasurementReturn => {
         }
       }
     };
-  }, [map, activeMeasurement, source, createStyleFunction, initializeInteractions, ]);
+  }, [map, activeMeasurement, source, createStyleFunction, initializeInteractions, enableDoubleClickZoom]);
   
   const updateMapFeatures = useCallback(() => {
   source.clear();

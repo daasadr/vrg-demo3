@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Map } from 'ol';
 import { transform } from 'ol/proj';
 import Overlay from 'ol/Overlay';
 import { Box, Switch, FormControlLabel } from '@mui/material';

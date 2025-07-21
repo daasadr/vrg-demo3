@@ -164,6 +164,7 @@ const calculateDistance = useCallback((coords: number[][]) => {
 
     map.addInteraction(draw);
     drawRef.current = draw;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, source, styles, isActive]);
 
   const initializeModifyInteraction = useCallback(() => {
