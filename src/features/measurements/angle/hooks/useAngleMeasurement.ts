@@ -204,10 +204,14 @@ export const useAngleMeasurement = (map: Map | null, isActive: boolean) => {
   useEffect(() => {
     if (!map || !isActive) return;
 
-    map.addLayer(vectorLayerRef.current);
+    // Capture ref values at the beginning of the effect when they are stable
+    const vectorLayer = vectorLayerRef.current;
+    const source = sourceRef.current;
+
+    map.addLayer(vectorLayer);
     const cleanup = setupMapInteractions(
       map,
-      sourceRef.current,
+      source,
       updateFeaturesFromCoordinates,
       calculateAngle,
       setCoordinates
@@ -215,9 +219,7 @@ export const useAngleMeasurement = (map: Map | null, isActive: boolean) => {
 
     return () => {
       cleanup();
-      // Capture ref values to avoid stale closure issues
-      const vectorLayer = vectorLayerRef.current;
-      const source = sourceRef.current;
+      // Use the captured values from the beginning of the effect
       if (vectorLayer) {
         map.removeLayer(vectorLayer);
       }
